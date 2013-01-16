@@ -171,7 +171,7 @@
 
 				<xsl:choose>
 					<xsl:when test="$html-container-enabled = true()">
-						<div class="validation-summary {$success-class}" data-status="error">
+						<div class="validation-summary {$success-class}" data-status="success">
 							<xsl:copy-of select="exsl:node-set($result)/* | exsl:node-set($result)/text()"/>
 						</div>
 					</xsl:when>
