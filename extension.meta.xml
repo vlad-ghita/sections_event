@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<extension id="sections_event" status="released" xmlns="http://symphony-cms.com/schemas/extension/1.0">
+
+	<name>Sections event</name>
+
+	<description>Offers one event to rule all Sections.</description>
+
+	<repo type="github">https://github.com/vlad-ghita/sections_event</repo>
+
+	<url type="discuss">http://getsymphony.com/discuss/thread/96491/</url>
+
+	<types>
+		<type>Event</type>
+	</types>
+
+	<authors>
+		<author>
+			<name github="vlad-ghita" symphony="vladG">Vlad Ghita</name>
+			<email>vlad.github@gmail.com</email>
+			<website>http://www.xanderadvertising.com</website>
+		</author>
+	</authors>
+
+	<releases>
+		<release version="1.0" date="2013-01-16" min="2.3"><![CDATA[
+			* First release.
+		]]></release>
+	</releases>
+
+</extension>
