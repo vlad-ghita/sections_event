@@ -145,7 +145,7 @@ result:
         <xsl:with-param name="handle" select="'authors'"/>
         <xsl:with-param name="value" select="'authors[1]'"/>
         <xsl:with-param name="section" select="'books'"/>
-        <xsl:with-param name="position" select="0"/>
+        <xsl:with-param name="position" select="1"/>
         <xsl:with-param name="attributes">
             <type>hidden</type>
         </xsl:with-param>
@@ -159,7 +159,7 @@ result:
     <input type="text" value="Encyclopedia" id="sections-books-0-title" name="sections[books][0][title]">
     <input type="hidden" value="authors[0], authors[2]" id="sections-books-0-authors" name="sections[books][0][authors]">
     <input type="text" value="XSLT Cookbook" id="sections-books-1-title" name="sections[books][1][title]">
-    <input type="hidden" value="authors[1]" id="sections-books-0-authors" name="sections[books][0][authors]">
+    <input type="hidden" value="authors[1]" id="sections-books-1-authors" name="sections[books][1][authors]">
 
 ### Example 6. An input related to a Date/Time field
 
