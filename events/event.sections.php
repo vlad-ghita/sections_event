@@ -13,8 +13,6 @@
 	Final Class EventSections extends SectionsSectionEvent
 	{
 
-		public $ROOTELEMENT = '';
-
 		public $eParamFILTERS = array();
 
 		private $link_fields = array('selectbox_link', 'selectbox_link_plus');
@@ -392,7 +390,7 @@
 
 
 		/**
-		 * Takes the sections from sectionsCommit() and links the Entries
+		 * Takes the sections from sectionsSet() and links the Entries
 		 *
 		 * @param $input
 		 *
@@ -401,7 +399,7 @@
 		private function sectionsLink($input){
 			$output = $input;
 
-			foreach($output as $handle => &$section){
+			foreach($output as $handle => $section){
 				if( empty($section['id']) ) continue;
 
 				$schema = FieldManager::fetchFieldsSchema( $section['id'] );
@@ -474,7 +472,7 @@
 
 
 		/**
-		 * Takes the sections from sectionsSet() and commits field data foreach Entry
+		 * Takes the sections from sectionsLink() and commits field data foreach Entry
 		 *
 		 * @param $input
 		 *
