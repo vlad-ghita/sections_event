@@ -14,7 +14,7 @@
 		Description: Renders an HTML `input` element
 		Returns: HTML <input> element
 		Parameters:
-		* `handle` (mandatory, string): Handle of the field name
+		* `handle` (optional, string): Handle of the field name
 		* `value` (optional, string): The selected value sent when the form is submitted
 		* `attributes` (optional, node set): Other attributes for this element
 		* `event` (optional, node set): The Sections event

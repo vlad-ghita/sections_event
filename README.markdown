@@ -10,7 +10,7 @@ Using this approach, those relations are handled on-the-fly and no more customiz
 
 * __One event to rule them all.__ It takes the form data and dispatches the processing for all sections where it should be. It also takes care of __linking__ the entries to each other.
 * __Up to date Form controls.__ More complex fields have arisen lately. @nickdunn's Form Controls have fallen behind. The `Section Form Controls` offer updated and flexible utilities to help with the new fields and challenges.
-* __Built in multiple entries support.__ Multiple entries are now supported by default without needing to apply another filter. Using `Section Form Controls` refactoring the XSLT code support multiple entries it's a breeze.
+* __Built in multiple entries support.__ Multiple entries are now supported by default without needing to apply another filter. Using `Section Form Controls`, refactoring the XSLT code to support multiple entries at once becomes a breeze.
 
 ## Install
 

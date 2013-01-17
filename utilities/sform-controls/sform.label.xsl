@@ -22,7 +22,7 @@
 		* `position` (optional, string): Index of this entry in a multiple entries situation
 	-->
 	<xsl:template name="sform:label">
-		<xsl:param name="handle"/>
+		<xsl:param name="handle" select="''"/>
 		<xsl:param name="value" select="''"/>
 		<xsl:param name="attributes" select="''"/>
 		<xsl:param name="event" select="$sform:event"/>
@@ -32,12 +32,19 @@
 		<xsl:variable name="attribs" select="exsl:node-set($attributes)"/>
 
 		<xsl:variable name="attrs">
-			<xsl:call-template name="sform:attributes-general">
-				<xsl:with-param name="handle" select="$handle"/>
-				<xsl:with-param name="section" select="$section"/>
-				<xsl:with-param name="position" select="$position"/>
-				<xsl:with-param name="prefix" select="'label'"/>
-			</xsl:call-template>
+			<xsl:if test="$handle != ''">
+				<for>
+					<xsl:call-template name="sform:control-id">
+						<xsl:with-param name="name">
+							<xsl:call-template name="sform:control-name">
+								<xsl:with-param name="handle" select="$handle"/>
+								<xsl:with-param name="section" select="$section"/>
+								<xsl:with-param name="position" select="$position"/>
+							</xsl:call-template>
+						</xsl:with-param>
+					</xsl:call-template>
+				</for>
+			</xsl:if>
 
 			<xsl:call-template name="sform:attributes-class">
 				<xsl:with-param name="event" select="$event"/>
