@@ -250,16 +250,16 @@
 		Description: Returns status info about a field
 		Returns: XML
 		Parameters:
-		* `handle` (optional, string): Handle of the field name
-		* `event` (optional, node set): The Sections event
+		* `handle` (mandatory, string): Handle of the field name
 		* `section` (optional, string): The section to where this belongs
 		* `position` (optional, string): Index of this entry in a multiple entries situation
+		* `event` (optional, node set): The Sections event
 	-->
 	<xsl:template name="sform:validation-status">
 		<xsl:param name="handle"/>
-		<xsl:param name="event" select="$sform:event"/>
 		<xsl:param name="section" select="'__fields'"/>
 		<xsl:param name="position" select="''"/>
+		<xsl:param name="event" select="$sform:event"/>
 
 		<!-- Get entry data -->
 		<xsl:variable name="entry-data">
@@ -275,7 +275,7 @@
 		<xsl:choose>
 
 			<!-- Field has data only in case of error -->
-			<xsl:when test="$field/@type">
+			<xsl:when test="$field">
 				<xsl:element name="{$handle}">
 					<xsl:attribute name="result">error</xsl:attribute>
 
@@ -307,10 +307,10 @@
 		Description: Same as @template sform:validation-status but as a function of easy access
 		Returns: XML
 		Parameters:
-		* `handle` (optional, string): Handle of the field name
-		* `event` (optional, node set): The Sections event
+		* `handle` (mandatory, string): Handle of the field name
 		* `section` (optional, string): The section to where this belongs
 		* `position` (optional, string): Index of this entry in a multiple entries situation
+		* `event` (optional, node set): The Sections event
 	-->
 	<func:function name="sform:validation-status">
 		<xsl:param name="handle"/>
