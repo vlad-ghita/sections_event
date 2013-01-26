@@ -14,47 +14,86 @@
 		Description: Renders an HTML `label` element
 		Returns: HTML <label> element
 		Parameters:
-		* `handle` (mandatory, string): Handle of the field name
-		* `value` (optional, string|node set): The value inside the label. Can be HTML code as well
-		* `attributes` (optional, node set): Other attributes for this element
-		* `event` (optional, node set): The Sections event
-		* `section` (optional, string): The section to where this belongs
-		* `position` (optional, string): Index of this entry in a multiple entries situation
+
+		***** Identification *****
+		* `event` (optional, string): The Event powering the form.
+		* `prefix` (optional, string): The prefix that will hold all form data.
+		* `section` (optional, string): The section to where data should be sent.
+		* `position` (optional, string): Index of this entry in a multiple entries situation. Leave empty if not needed.
+		* `handle` (mandatory, string): Handle of the field.
+		* `suffix` (optional, string): An xPath like string for more flexibility.
+
+		***** Validation *****
+		* `interpretation` (optional, XML node-set): An XML with the validation of the form
+		* `interpretation-el` (optional, XML node-set): An XML with the validation for this field
+
+		***** Element data *****
+		* `value` (optional, string): The value sent when the form is submitted.
+		* `attributes` (optional, node set): Other attributes for this element.
 	-->
 	<xsl:template name="sform:label">
-		<xsl:param name="handle" select="''"/>
+		<!-- Identification -->
+		<xsl:param name="event" select="$sform:event"/>
+		<xsl:param name="prefix" select="$sform:prefix"/>
+		<xsl:param name="section" select="$sform:section"/>
+		<xsl:param name="position" select="$sform:position"/>
+		<xsl:param name="handle"/>
+		<xsl:param name="suffix" select="$sform:suffix"/>
+
+		<!-- Validation -->
+		<xsl:param name="interpretation">
+			<xsl:call-template name="sform:validation-interpret">
+				<xsl:with-param name="event" select="$event"/>
+				<xsl:with-param name="prefix" select="$prefix"/>
+				<xsl:with-param name="section" select="$section"/>
+				<xsl:with-param name="position" select="$position"/>
+				<xsl:with-param name="fields-sel">
+					<xsl:call-template name="sform:validation-tpl-sel">
+						<xsl:with-param name="handle" select="$handle"/>
+						<xsl:with-param name="extMode" select="'update'"/>
+						<xsl:with-param name="suffix" select="$suffix"/>
+					</xsl:call-template>
+				</xsl:with-param>
+			</xsl:call-template>
+		</xsl:param>
+		<xsl:param name="interpretation-el" select="exsl:node-set($interpretation)/fields/item[ @handle = $handle ]"/>
+
+		<!-- Element data -->
 		<xsl:param name="value" select="''"/>
 		<xsl:param name="attributes" select="''"/>
-		<xsl:param name="event" select="$sform:event"/>
-		<xsl:param name="section" select="'__fields'"/>
-		<xsl:param name="position" select="''"/>
 
 		<xsl:variable name="attribs" select="exsl:node-set($attributes)"/>
 
 		<xsl:variable name="attrs">
 			<xsl:if test="$handle != ''">
 				<for>
-					<xsl:call-template name="sform:control-id">
-						<xsl:with-param name="name">
-							<xsl:call-template name="sform:control-name">
-								<xsl:with-param name="handle" select="$handle"/>
-								<xsl:with-param name="section" select="$section"/>
-								<xsl:with-param name="position" select="$position"/>
-							</xsl:call-template>
-						</xsl:with-param>
-					</xsl:call-template>
+					<xsl:choose>
+					    <xsl:when test="$attribs/id != ''">
+					        <xsl:value-of select="$attribs/id"/>
+					    </xsl:when>
+					    <xsl:otherwise>
+						    <xsl:call-template name="sform:control-id">
+							    <xsl:with-param name="name">
+								    <xsl:call-template name="sform:control-name">
+									    <xsl:with-param name="prefix" select="$prefix"/>
+									    <xsl:with-param name="handle" select="$handle"/>
+									    <xsl:with-param name="section" select="$section"/>
+									    <xsl:with-param name="position" select="$position"/>
+									    <xsl:with-param name="suffix" select="$suffix"/>
+								    </xsl:call-template>
+							    </xsl:with-param>
+						    </xsl:call-template>
+					    </xsl:otherwise>
+					</xsl:choose>
 				</for>
 			</xsl:if>
 
 			<xsl:call-template name="sform:attributes-class">
-				<xsl:with-param name="event" select="$event"/>
-				<xsl:with-param name="handle" select="$handle"/>
-				<xsl:with-param name="section" select="$section"/>
-				<xsl:with-param name="position" select="$position"/>
+				<xsl:with-param name="interpretation" select="$interpretation-el"/>
 				<xsl:with-param name="class" select="$attribs/class"/>
 			</xsl:call-template>
 
-			<xsl:copy-of select="$attribs/*[ name() != 'for' and name() != 'id' and name() != 'class' ]"/>
+			<xsl:copy-of select="$attribs/*[ name() != 'for' and name() != 'class' ]"/>
 		</xsl:variable>
 
 		<xsl:call-template name="sform:render">

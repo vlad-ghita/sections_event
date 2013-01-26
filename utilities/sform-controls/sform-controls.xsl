@@ -15,7 +15,7 @@
 					 Inspired from @nickdunn's Form Controls.
 		Version: 1.0
 		Author: Vlad Ghita <http://github.com/vlad-ghita>
-		URL: http://github.com/vlad-ghita/sections-event
+		URL: http://github.com/vlad-ghita/sections_event
 	-->
 
 
@@ -32,11 +32,16 @@
 
 
 
-	<!-- Event -->
-	<xsl:variable name="sform:event" select="/data/events/sections"/>
+	<!-- Some default config. DO NOT change this. -->
+	<xsl:variable name="sform:null" select="'SFORM_NULL'"/>
+	<xsl:variable name="sform:event" select="'sections'"/>
+	<xsl:variable name="sform:prefix" select="'sections'"/>
+	<xsl:variable name="sform:section" select="'__fields'"/>
+	<xsl:variable name="sform:position" select="$sform:null"/>
+	<xsl:variable name="sform:suffix" select="$sform:null"/>
 
-	<!-- Class to invalid form controls -->
-	<xsl:variable name="sform:invalid-class" select="'invalid'"/>
+	<!-- Class for invalid form controls -->
+	<xsl:variable name="sform:invalid-class" select="'error'"/>
 
 
 
@@ -44,31 +49,52 @@
 	<!--
 		Name: sform:attributes-general
 		Description: attributes common to all form controls (name, id)
-		Returns: node set
+		Returns: XML
 	-->
 	<xsl:template name="sform:attributes-general">
+		<!-- Identification -->
+		<xsl:param name="prefix" select="$sform:prefix"/>
+		<xsl:param name="section" select="$sform:section"/>
+		<xsl:param name="position" select="$sform:position"/>
 		<xsl:param name="handle"/>
-		<xsl:param name="section" select="'__fields'"/>
-		<xsl:param name="position" select="''"/>
-		<xsl:param name="prefix" select="''"/>
+		<xsl:param name="suffix" select="$sform:suffix"/>
 
-		<xsl:variable name="name">
+		<!-- Incoming values -->
+		<xsl:param name="name" select="false()"/>
+		<xsl:param name="id" select="false()"/>
+
+		<xsl:variable name="default-name">
 			<xsl:call-template name="sform:control-name">
 				<xsl:with-param name="handle" select="$handle"/>
+				<xsl:with-param name="prefix" select="$prefix"/>
+				<xsl:with-param name="suffix" select="$suffix"/>
 				<xsl:with-param name="section" select="$section"/>
 				<xsl:with-param name="position" select="$position"/>
 			</xsl:call-template>
 		</xsl:variable>
 
 		<name>
-			<xsl:value-of select="$name"/>
+			<xsl:choose>
+			    <xsl:when test="$name != false()">
+				    <xsl:value-of select="string($name)"/>
+			    </xsl:when>
+			    <xsl:otherwise>
+				    <xsl:value-of select="$default-name"/>
+			    </xsl:otherwise>
+			</xsl:choose>
 		</name>
 
 		<id>
-			<xsl:value-of select="$prefix"/>
-			<xsl:call-template name="sform:control-id">
-				<xsl:with-param name="name" select="$name"/>
-			</xsl:call-template>
+			<xsl:choose>
+			    <xsl:when test="$id != false()">
+			        <xsl:value-of select="string($id)"/>
+			    </xsl:when>
+			    <xsl:otherwise>
+				    <xsl:call-template name="sform:control-id">
+					    <xsl:with-param name="name" select="$default-name"/>
+				    </xsl:call-template>
+			    </xsl:otherwise>
+			</xsl:choose>
 		</id>
 	</xsl:template>
 
@@ -76,32 +102,15 @@
 	<!--
 		Name: sform:attributes-class
 		Description: class attribute
-		Returns: node set
+		Returns: XML
 	-->
 	<xsl:template name="sform:attributes-class">
-		<xsl:param name="handle"/>
-		<xsl:param name="event" select="$sform:event"/>
-		<xsl:param name="section" select="'__fields'"/>
-		<xsl:param name="position" select="''"/>
+		<!-- Validation result -->
+		<xsl:param name="interpretation"/>
 		<xsl:param name="class" select="''"/>
 
-		<xsl:variable name="entry-data">
-			<xsl:call-template name="sform:entry-data">
-				<xsl:with-param name="event" select="$event"/>
-				<xsl:with-param name="section" select="$section"/>
-				<xsl:with-param name="position" select="$position"/>
-			</xsl:call-template>
-		</xsl:variable>
-
-		<xsl:variable name="is_valid">
-			<xsl:choose>
-				<xsl:when test="exsl:node-set($entry-data)/*/*[name()=$handle and (@type='missing' or @type='invalid')]">false</xsl:when>
-				<xsl:otherwise>true</xsl:otherwise>
-			</xsl:choose>
-		</xsl:variable>
-
 		<xsl:variable name="cls">
-			<xsl:if test="$is_valid = 'false'">
+			<xsl:if test="exsl:node-set($interpretation)/@status = $sform:STATUS_ERROR">
 				<xsl:value-of select="$sform:invalid-class"/>
 			</xsl:if>
 			<xsl:text> </xsl:text>
@@ -119,23 +128,35 @@
 	<!--
 		Name: sform:entry-data
 		Description: returns entry data from the event
-		Returns: node set
+		Returns: XML
 	-->
 	<xsl:template name="sform:entry-data">
 		<xsl:param name="event" select="$sform:event"/>
-		<xsl:param name="section" select="'__fields'"/>
-		<xsl:param name="position" select="''"/>
+		<xsl:param name="section" select="$sform:section"/>
+		<xsl:param name="position" select="$sform:position"/>
 
-		<xsl:variable name="pos">
-			<xsl:choose>
-				<xsl:when test="number($position) > 0">
-					<xsl:value-of select="$position"/>
-				</xsl:when>
-				<xsl:otherwise>0</xsl:otherwise>
-			</xsl:choose>
-		</xsl:variable>
+		<xsl:choose>
 
-		<xsl:copy-of select="$event/*[ name() = $section ]/entry[ @position = $pos ]"/>
+			<!-- Sections Event signature -->
+		    <xsl:when test="$section != ''">
+			    <xsl:variable name="pos">
+				    <xsl:choose>
+					    <xsl:when test="$position != $sform:position and number($position) > 0">
+						    <xsl:value-of select="$position"/>
+					    </xsl:when>
+					    <xsl:otherwise>0</xsl:otherwise>
+				    </xsl:choose>
+			    </xsl:variable>
+
+			    <xsl:copy-of select="/data/events/*[ name() = $event ]/*[ name() = $section ]/entry[ @position = $pos ]"/>
+		    </xsl:when>
+
+			<!-- Other event -->
+		    <xsl:otherwise>
+			    <xsl:copy-of select="/data/events/*[ name() = $event ]"/>
+		    </xsl:otherwise>
+
+		</xsl:choose>
 	</xsl:template>
 
 
@@ -147,19 +168,51 @@
 		Returns: string
 	-->
 	<xsl:template name="sform:control-name">
+		<xsl:param name="prefix" select="$sform:prefix"/>
+		<xsl:param name="section" select="$sform:section"/>
+		<xsl:param name="position" select="$sform:position"/>
 		<xsl:param name="handle"/>
-		<xsl:param name="section" select="'__fields'"/>
-		<xsl:param name="position" select="''"/>
+		<xsl:param name="suffix" select="$sform:suffix"/>
 
-		<xsl:value-of select="concat('sections[',$section,']')"/>
+		<!-- Gather all bits that form the name -->
+		<xsl:variable name="bits_all">
+			<item>
+				<xsl:value-of select="$prefix"/>
+			</item>
+			<item>
+				<xsl:value-of select="$section"/>
+			</item>
+			<item>
+				<xsl:if test="$position != $sform:position">
+					<xsl:value-of select="$position"/>
+				</xsl:if>
+			</item>
+			<item>
+				<xsl:value-of select="$handle"/>
+			</item>
+			<xsl:if test="$suffix != $sform:suffix and $suffix != ''">
+				<xsl:call-template name="sform:control-name-recurse">
+					<xsl:with-param name="string" select="$suffix"/>
+				</xsl:call-template>
+			</xsl:if>
+		</xsl:variable>
 
-		<xsl:if test="$position != ''">
-			<xsl:value-of select="concat('[',$position,']')"/>
-		</xsl:if>
+		<!-- Remove empty ones (especially from beginning) -->
+		<xsl:variable name="bits_filtered">
+			<xsl:for-each select="exsl:node-set($bits_all)/*">
+				<xsl:if test="normalize-space(.) != '' or position() = last()">
+					<xsl:copy-of select="."/>
+				</xsl:if>
+			</xsl:for-each>
+		</xsl:variable>
 
-		<xsl:call-template name="sform:control-name-recurse">
-			<xsl:with-param name="handle" select="$handle"/>
-		</xsl:call-template>
+		<!-- Return array name -->
+		<xsl:value-of select="exsl:node-set($bits_filtered)/*[1]"/>
+
+		<!-- Return array keys -->
+		<xsl:for-each select="exsl:node-set($bits_filtered)/*[position() > 1]">
+			<xsl:value-of select="concat('[',normalize-space(.),']')"/>
+		</xsl:for-each>
 	</xsl:template>
 
 	<!--
@@ -168,24 +221,54 @@
 		Returns: string
 	-->
 	<xsl:template name="sform:control-name-recurse">
-		<xsl:param name="handle"/>
+		<xsl:param name="string"/>
 
-		<xsl:choose>
-			<xsl:when test="contains($handle, '/')">
-				<xsl:value-of select="concat('[', substring-before($handle, '/'), ']')"/>
-				<xsl:call-template name="sform:control-name-recurse">
-					<xsl:with-param name="handle" select="substring-after($handle, '/')"/>
-				</xsl:call-template>
-			</xsl:when>
+		<item>
+			<xsl:choose>
+				<xsl:when test="contains($string, '/')">
+					<xsl:value-of select="substring-before($string, '/')"/>
+				</xsl:when>
 
-			<xsl:when test="$handle = ' '">
-				<xsl:text>[]</xsl:text>
-			</xsl:when>
+				<xsl:when test="$string = ' '"/>
 
-			<xsl:when test="$handle != ''">
-				<xsl:value-of select="concat('[', $handle, ']')"/>
-			</xsl:when>
-		</xsl:choose>
+				<xsl:when test="$string != ''">
+					<xsl:value-of select="$string"/>
+				</xsl:when>
+			</xsl:choose>
+		</item>
+
+		<xsl:if test="contains($string, '/')">
+			<xsl:call-template name="sform:control-name-recurse">
+				<xsl:with-param name="string" select="substring-after($string, '/')"/>
+			</xsl:call-template>
+		</xsl:if>
+	</xsl:template>
+
+
+
+
+	<!--
+		Name: sform:control-variable
+		Description: returns a keyed field name for use as a replaceable variable
+		Returns: string
+	-->
+	<xsl:template name="sform:variable">
+		<xsl:param name="section" select="$sform:section"/>
+		<xsl:param name="position" select="$sform:position"/>
+		<xsl:param name="handle" select="'system:id'"/>
+		<xsl:param name="suffix" select="$sform:suffix"/>
+
+		<xsl:variable name="name">
+			<xsl:call-template name="sform:control-name">
+				<xsl:with-param name="prefix" select="''"/>
+				<xsl:with-param name="section" select="$section"/>
+				<xsl:with-param name="position" select="$position"/>
+				<xsl:with-param name="handle" select="$handle"/>
+				<xsl:with-param name="suffix" select="$suffix"/>
+			</xsl:call-template>
+		</xsl:variable>
+
+		<xsl:value-of select="concat('%',$name,'%')"/>
 	</xsl:template>
 
 
@@ -203,16 +286,21 @@
 
 		<xsl:variable name="clean_name">
 			<xsl:choose>
+
+				<!-- Handle case when name ends with `[]` -->
 				<xsl:when test="substring($name, $length - 2, 3) = '][]'">
 					<xsl:value-of select="substring($name, 1, $length - 3)"/>
 				</xsl:when>
+
+				<!-- Name is OK -->
 				<xsl:otherwise>
 					<xsl:value-of select="$name"/>
 				</xsl:otherwise>
+
 			</xsl:choose>
 		</xsl:variable>
 
-		<xsl:value-of select="translate(translate($clean_name,'[','-'),']','')"/>
+		<xsl:value-of select="translate(translate($clean_name,'[','_'),']','')"/>
 	</xsl:template>
 
 
@@ -224,10 +312,11 @@
 		Returns: string
 	-->
 	<xsl:template name="sform:postback-value">
-		<xsl:param name="handle"/>
-		<xsl:param name="section" select="'__fields'"/>
 		<xsl:param name="event" select="$sform:event"/>
-		<xsl:param name="position" select="''"/>
+		<xsl:param name="section" select="$sform:section"/>
+		<xsl:param name="position" select="$sform:position"/>
+		<xsl:param name="handle"/>
+		<xsl:param name="suffix" select="$sform:suffix"/>
 
 		<xsl:variable name="entry-data">
 			<xsl:call-template name="sform:entry-data">
@@ -237,9 +326,15 @@
 			</xsl:call-template>
 		</xsl:variable>
 
+		<xsl:variable name="suf">
+			<xsl:if test="$suffix != $sform:suffix">
+				<xsl:value-of select="$suffix"/>
+			</xsl:if>
+		</xsl:variable>
+
 		<xsl:call-template name="sform:postback-value-recurse">
-			<xsl:with-param name="node" select="exsl:node-set($entry-data)/*/post-values"/>
-			<xsl:with-param name="handle" select="$handle"/>
+			<xsl:with-param name="node" select="exsl:node-set($entry-data)/*/post-values/*[ name() = $handle ]"/>
+			<xsl:with-param name="string" select="$suf"/>
 		</xsl:call-template>
 	</xsl:template>
 
@@ -250,23 +345,33 @@
 	-->
 	<xsl:template name="sform:postback-value-recurse">
 		<xsl:param name="node"/>
-		<xsl:param name="handle"/>
+		<xsl:param name="string"/>
 
 		<xsl:choose>
-			<xsl:when test="contains($handle, '/')">
+
+			<!-- Keep digging -->
+			<xsl:when test="contains($string, '/')">
 				<xsl:call-template name="sform:postback-value-recurse">
-					<xsl:with-param name="node" select="$node/*[ name() = substring-before($handle, '/') ]"/>
-					<xsl:with-param name="handle" select="substring-after($handle, '/')"/>
+					<xsl:with-param name="node" select="$node/*[ name() = substring-before($string, '/') ]"/>
+					<xsl:with-param name="string" select="substring-after($string, '/')"/>
 				</xsl:call-template>
 			</xsl:when>
 
-			<xsl:when test="$handle = ' '">
+			<!-- This marks an expected item from a classic array -->
+			<xsl:when test="$string = ' '">
 				<xsl:copy-of select="$node/item"/>
 			</xsl:when>
 
-			<xsl:when test="$handle != ''">
-				<xsl:value-of select="$node/*[ name() = $handle ]"/>
+			<!-- Plain node value -->
+			<xsl:when test="$string != ''">
+				<xsl:value-of select="$node/*[ name() = $string ]"/>
 			</xsl:when>
+
+			<!-- The node itself -->
+			<xsl:otherwise>
+			    <xsl:value-of select="$node"/>
+			</xsl:otherwise>
+
 		</xsl:choose>
 	</xsl:template>
 
@@ -285,9 +390,9 @@
 
 		<xsl:element name="{$element}">
 			<xsl:for-each select="exsl:node-set($attributes)/*">
-				<xsl:if test=". != ''">
+				<xsl:if test="normalize-space(.) != ''">
 					<xsl:attribute name="{name()}">
-						<xsl:value-of select="."/>
+						<xsl:value-of select="normalize-space(.)"/>
 					</xsl:attribute>
 				</xsl:if>
 			</xsl:for-each>
@@ -314,7 +419,7 @@
 	<!--
 		Name: sform:incrementor
 		Description: increases or decreases a number between two bounds
-		Returns: a nodeset of <option> elements
+		Returns: a node-set of <option> elements
 	-->
 	<xsl:template name="sform:incrementor">
 		<xsl:param name="start"/>
@@ -324,7 +429,7 @@
 		<xsl:if test="$count > 0">
 			<option>
 				<xsl:choose>
-					<xsl:when test="$direction='-'">
+					<xsl:when test="$direction = '-'">
 						<xsl:value-of select="$start - ($iterations - $count)"/>
 					</xsl:when>
 					<xsl:otherwise>
@@ -339,6 +444,127 @@
 				<xsl:with-param name="direction" select="$direction"/>
 			</xsl:call-template>
 		</xsl:if>
+	</xsl:template>
+
+
+
+
+	<!--
+	Extend $default XML with $input XML. See bellow for usages of extMode attribute.
+
+
+	Default:
+
+	<root>
+	    <L_1 id="elem_1_1" value="val_1_1">
+			<L_2 name="elem_2_1" value="val_2_1">txt_2_1</L_2>
+			<L_2 name="elem_2_2" value="val_2_2">txt_2_2</L_2>txt_1_1</L_1>
+
+		<L_1 id="elem_1_2" value="val_1_2">
+			<L_2 name="elem_2_1" value="val_2_1">txt_2_1</L_2>
+			<L_2 name="elem_2_2" value="val_2_2">txt_2_2</L_2>txt_1_2</L_1>
+
+		<L_1 id="elem_1_3" value="val_1_3">
+			<L_2 name="elem_2_1" value="val_2_1">txt_2_1</L_2>
+			<L_2 name="elem_2_2" value="val_2_2">txt_2_2</L_2>txt_1_3</L_1>
+
+		<L_1 id="elem_1_4" value="val_1_4">
+			<L_2 name="elem_2_1" value="val_2_1">txt_2_1</L_2>
+			<L_2 name="elem_2_2" value="val_2_2">txt_2_2</L_2>txt_1_4</L_1>
+
+		<L_1 id="elem_1_5" value="val_1_5">
+			<L_2 name="elem_2_1" value="val_2_1">txt_2_1</L_2>
+			<L_2 name="elem_2_2" value="val_2_2">txt_2_2</L_2>txt_1_5</L_1>
+	</root>
+
+
+	Input:
+
+	<root>
+	    <!** update elem_1_1 and the two child elements respectively **>
+		<L_1 id="elem_1_1" value="oval_1_1" extMode="update">
+			<L_2 name="elem_2_1" value="oval_2_1">otxt_2_1</L_2>
+			<L_2 name="elem_2_2" value="oval_2_2">otxt_2_2</L_2>otxt_1</L_1>
+
+		<!** update elem_1_2, since it has no children **>
+		<L_1 id="elem_1_2" value="oval_1_2">otxt_2</L_1>
+
+		<!** update children of elem_1_3 but not the element itself, since the extMode is not specified **>
+		<L_1 id="elem_1_3" value="oval_1_3(ignored)">
+			<L_2 name="elem_2_1" value="oval_2_1"/>
+			<L_2 name="elem_2_2" value="oval_2_2"/>
+			<L_2 name="elem_23" value="oval_23"/>otxt_3</L_1>
+
+		<!** delete elem_1_4 **>
+		<L_1 id="elem_1_4" extMode="delete"/>
+
+		<!** replace elem_1_5 with the following element **>
+		<L_1 id="elem_1_5" value="oval_1_2" extMode="replace">
+			<L_2 name="elem_2_1" value="oval_2_1"/>otxt_5</L_1>
+	</root>
+
+	-->
+	<xsl:template name="sform:extend">
+		<xsl:param name="def"/>
+		<xsl:param name="in"/>
+
+		<xsl:variable name="default" select="exsl:node-set($def)"/>
+		<xsl:variable name="input" select="exsl:node-set($in)"/>
+
+		<xsl:for-each select="$default/*">
+			<xsl:variable name="key" select="@*[1]"/>
+			<xsl:variable name="inp" select="$input/*[local-name() = local-name(current()) and (not($key) or @*[1] = $key)]"/>
+
+			<xsl:if test="count($inp) = 0">
+				<xsl:copy-of select="."/>
+			</xsl:if>
+
+			<xsl:if test="count($inp) = 1 and (not($inp/@extMode) or $inp/@extMode != 'delete')">
+				<xsl:choose>
+					<xsl:when test="count($inp/*) = 0 or $inp/@extMode = 'update' or $inp/@extMode = 'replace'">
+						<xsl:variable name="current" select="."/>
+
+						<xsl:for-each select="$inp">
+							<xsl:copy>
+								<xsl:for-each select="@*[name() != 'extMode']| text()[string-length(normalize-space(.))>0]">
+									<xsl:copy/>
+								</xsl:for-each>
+								<xsl:choose>
+									<xsl:when test="$inp/@extMode = 'replace'">
+										<xsl:copy-of select="*"/>
+									</xsl:when>
+									<xsl:otherwise>
+										<xsl:call-template name="xcms.extend">
+											<xsl:with-param name="def" select="$current"/>
+											<xsl:with-param name="in" select="."/>
+										</xsl:call-template>
+									</xsl:otherwise>
+								</xsl:choose>
+							</xsl:copy>
+						</xsl:for-each>
+					</xsl:when>
+					<xsl:otherwise>
+						<xsl:copy>
+							<xsl:for-each select="@*|text()[string-length(normalize-space(.))>0]">
+								<xsl:copy/>
+							</xsl:for-each>
+							<xsl:call-template name="xcms.extend">
+								<xsl:with-param name="def" select="."/>
+								<xsl:with-param name="in" select="$inp"/>
+							</xsl:call-template>
+						</xsl:copy>
+					</xsl:otherwise>
+				</xsl:choose>
+			</xsl:if>
+		</xsl:for-each>
+
+		<xsl:for-each select="$input/*">
+			<xsl:variable name="key" select="@*[1]"/>
+
+			<xsl:if test="count($default/*[local-name() = local-name(current()) and (not($key) or @*[1] = $key)]) = 0">
+				<xsl:copy-of select="."/>
+			</xsl:if>
+		</xsl:for-each>
 	</xsl:template>
 
 

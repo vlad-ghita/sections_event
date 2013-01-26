@@ -12,10 +12,17 @@
 	 */
 	Final Class EventSections extends SectionsSectionEvent
 	{
+		const ACTION_NONE = 0;
+
+		const ACTION_CREATE = 1;
+
+		const ACTION_EDIT = 2;
+
+		const ACTION_DELETE = 3;
+
+		private $actions = array('none', 'create', 'edit', 'delete');
 
 		public $eParamFILTERS = array();
-
-		private $link_fields = array('selectbox_link', 'selectbox_link_plus');
 
 		/**
 		 * Current section ID.
@@ -23,6 +30,13 @@
 		 * @var int
 		 */
 		private static $source;
+
+		/**
+		 * Sections values at current processing stage
+		 *
+		 * @var array
+		 */
+		private $crt_sections = array();
 
 		/**
 		 * Keeps track of errors appeared during processing.
@@ -35,6 +49,7 @@
 			$this->errors = array(
 				'prepare' => false,
 				'entry' => false,
+				'delete' => false,
 				'check' => false,
 				'set' => false,
 				'link' => false,
@@ -123,6 +138,9 @@
 
 			if( empty($sections_post) ) return null;
 
+			$this->crt_sections = $sections_post;
+
+
 			/* 1. Prepare data for processing. Fire PreSaveFilters delegate */
 			$sections_prepare = $this->sectionsPrepare( $sections_post );
 
@@ -130,14 +148,30 @@
 				return $this->buildOutput( $sections_prepare );
 			}
 
-			/* 2. Check data */
-			$sections_check = $this->sectionsCheck( $sections_prepare );
+			$this->crt_sections = $sections_prepare;
+
+
+			/* 2. Delete Entries */
+			$sections_delete = $this->sectionsDelete( $sections_prepare );
+
+			if( $this->errorsExist() ){
+				return $this->buildOutput( $sections_delete );
+			}
+
+			$this->crt_sections = $sections_delete;
+
+
+			/* 3. Next stages refer to Create & Edit. Check fields data */
+			$sections_check = $this->sectionsCheck( $sections_delete );
 
 			if( $this->errorsExist() ){
 				return $this->buildOutput( $sections_check );
 			}
 
-			/* 3. Set data. This creates Entries in db table */
+			$this->crt_sections = $sections_check;
+
+
+			/* 4. Set fields data. This creates Entries in db table */
 			$sections_set = $this->sectionsSet( $sections_check );
 
 			if( $this->errorsExist() ){
@@ -145,16 +179,25 @@
 				return $this->buildOutput( $sections_set );
 			}
 
-			/* 4. Link Entries because we have their IDs */
-			$sections_link = $this->sectionsLink( $sections_set );
+			$this->crt_sections = $sections_set;
 
-			/* 5. Persist field data to db. Fires other delegates */
-			$sections_commit = $this->sectionsCommit( $sections_link );
+
+			/* 5. Replace Variables found in fields data at this stage b/c IDs can be used to link entries */
+			$sections_replace = $this->sectionsReplace( $sections_set );
+
+			$this->crt_sections = $sections_replace;
+
+
+			/* 6. Persist field data to db. Fires other delegates */
+			$sections_commit = $this->sectionsCommit( $sections_replace );
 
 			if( $this->errorsExist() ){
 				$this->rollback( $sections_commit );
 				return $this->buildOutput( $sections_commit );
 			}
+
+			$this->crt_sections = $sections_commit;
+
 
 			// redirect
 			if( !empty($redirect) ){
@@ -192,7 +235,7 @@
 
 				if( $handle == '__fields' ){
 					$done = true;
-					$entry_data = $this->sectionsPrepareEntry( 0, $data, null);
+					$entry_data = $this->sectionsPrepareEntry( 0, $data, null );
 					$entries[0] = $entry_data;
 
 					$output[$handle] = array(
@@ -224,15 +267,22 @@
 
 				// set filters if they exist
 				if( isset($data['__filters']) ){
-					$filters = isset($data['__filters']);
+					$filters = $data['__filters'];
 					unset($data['__filters']);
 				}
 
-				// find IDs
-				$ids = null;
-				if( isset($data['__id']) ){
-					$ids = $data['__id'];
-					unset($data['__id']);
+				// find edit IDs
+				$__edit = array();
+				if( isset($data['__edit']) ){
+					$__edit = $data['__edit'];
+					unset($data['__edit']);
+				}
+
+				// find delete IDs
+				$__delete = array();
+				if( isset($data['__delete']) ){
+					$__delete = $data['__delete'];
+					unset($data['__delete']);
 				}
 
 				// set current context
@@ -242,14 +292,46 @@
 				reset( $data );
 				if( !is_numeric( key( $data ) ) ){
 					$data = array($data);
+
+					if( !is_array( $__edit ) ){
+						$__edit = array($__edit);
+					}
+
+					if( !is_array( $__delete ) ){
+						$__delete = array($__delete);
+					}
 				}
 
-				if( is_array($data) ){
+				if( is_array( $data ) and !empty($data) ){
 					foreach($data as $position => $fields){
-						$entry_id = isset($ids[$position]) ? $ids[$position] : null;
+						$id_edit = isset($__edit[$position]) ? $__edit[$position] : null;
+						$id_delete = isset($__delete[$position]) ? $__delete[$position] : null;
 
-						$entries[$position] = $this->sectionsPrepareEntry( $position, $fields, $entry_id, $section_id );
+						$to_edit = is_numeric( $id_edit );
+						$to_delete = is_numeric( $id_delete );
+
+						$action = self::ACTION_NONE;
+						$entry_id = null;
+
+						if( $to_delete ){
+							$action = self::ACTION_DELETE;
+							$entry_id = $id_delete;
+						}
+						else{
+							if( $to_edit ){
+								$action = self::ACTION_EDIT;
+								$entry_id = $id_edit;
+							}
+							else{
+								$action = self::ACTION_CREATE;
+							}
+						}
+
+						$entries[$position] = $this->sectionsPrepareEntry( $position, $fields, $entry_id, $section_id, $action );
 					}
+				} // no fields submitted. Don't process section.
+				else{
+					$done = true;
 				}
 
 				$output[$handle] = array(
@@ -271,29 +353,41 @@
 		 * @param array $fields
 		 * @param int   $entry_id
 		 * @param int   $section_id
+		 * @param int   $action
 		 *
 		 * @return array
 		 */
-		private function sectionsPrepareEntry($position, $fields, $entry_id, $section_id = null){
-			$result = new XMLElement('entry', null, array('position' => $position));
+		private function sectionsPrepareEntry($position, $fields, $entry_id, $section_id = null, $action = null){
+			$action = $action === null ? self::ACTION_NONE : $action;
+
+			$result = new XMLElement('entry', null, array('position' => $position, 'action' => $this->actions[$action]));
 			$done = false;
-			$is_new = !is_numeric( $entry_id );
+			$e = null;
 
-			if( $is_new === true ){
-				$e =& EntryManager::create();
-				$e->set( 'section_id', $section_id );
+			switch( $action ){
 
-			} else{
-				$e =& EntryManager::fetch( $section_id );
-				$e = $e[0];
+				case self::ACTION_CREATE:
+					$e =& EntryManager::create();
+					$e->set( 'section_id', $section_id );
+					break;
 
-				if( !$e instanceof Entry ){
-					$this->errors['entry'] = true;
-					$done = true;
+				case self::ACTION_EDIT:
+				case self::ACTION_DELETE:
+					$e =& EntryManager::fetch( $entry_id );
+					$e = $e[0];
 
-					$result->setAttribute( 'result', 'error' );
-					$result->appendChild( new XMLElement('message', __( 'The Entry, %s, could not be found.', array($entry_id) )) );
-				}
+					if( !$e instanceof Entry ){
+						$this->errors['entry'] = true;
+						$done = true;
+
+						$result->setAttribute( 'result', 'error' );
+						$result->appendChild( new XMLElement('message', __( 'The Entry, %s, could not be found.', array($entry_id) )) );
+					}
+					break;
+
+				default:
+					$e = null;
+					break;
 			}
 
 			// create the post data element. This will be replaced in the commit stage
@@ -310,7 +404,7 @@
 			}
 
 			return array(
-				'new' => $is_new,
+				'action' => $action,
 				'id' => $entry_id,
 				'entry' => $e,
 				'fields' => $fields,
@@ -322,7 +416,47 @@
 
 
 		/**
-		 * Takes the sections from sectionsPrepare() and checks field data foreach Entry
+		 * Takes the sections from sectionsPrepare() and deletes marked entries
+		 *
+		 * @param $input
+		 *
+		 * @return array
+		 */
+		private function sectionsDelete($input){
+			$output = $input;
+//			$to_delete = array();
+//
+//			foreach($output as $handle => &$section){
+//
+//				foreach($section['entries'] as &$entry){
+//
+//					if( $entry['action'] === self::ACTION_DELETE ){
+//						$id = $entry['entry']->get( 'id' );
+//
+//						if( is_numeric( $id ) ){
+//							$entry['done'] = true;
+//							$to_delete[] = $id;
+//						}
+//					}
+//				}
+//			}
+//
+//			if( !empty($to_delete) ){
+//				include_once(TOOLKIT.'/class.entrymanager.php');
+//
+//				try{
+//					EntryManager::delete( $to_delete );
+//				} catch( Exception $e ){
+//					$this->errors['delete'] = true;
+//				}
+//			}
+
+			return $output;
+		}
+
+
+		/**
+		 * Takes the sections from sectionsDelete() and checks field data foreach Entry
 		 *
 		 * @param $input
 		 *
@@ -390,25 +524,49 @@
 
 
 		/**
-		 * Takes the sections from sectionsSet() and links the Entries
+		 * Takes the sections from sectionsSet() and replaces variables in field data
 		 *
 		 * @param $input
 		 *
 		 * @return array
 		 */
-		private function sectionsLink($input){
+		private function sectionsReplace($input){
 			$output = $input;
 
-			foreach($output as $handle => $section){
-				if( empty($section['id']) ) continue;
+			foreach($output as $handle => &$section){
 
-				$schema = FieldManager::fetchFieldsSchema( $section['id'] );
+				foreach($section['entries'] as &$entry){
 
-				if( is_array( $schema ) ){
-					foreach($schema as $field){
-						if( in_array( $field['type'], $this->link_fields ) ){
-							$this->sectionsLinkReplaceIDs( $output, $field );
+					$old_fields = $entry['fields'];
+
+					foreach($entry['fields'] as $field => $value){
+						$new_value = $this->sectionsReplaceGetNewValue( $value );
+
+						if( $new_value !== $value ){
+
+							// set the relation for post_back_values
+							$entry['fields'][$field] = $new_value;
+
+							// set the relation for DB if Entry exists
+							if( $entry['entry'] instanceof Entry ){
+								$s = $message = null;
+
+								$f_id = FieldManager::fetchFieldIDFromElementName( $field, $section['id'] );
+
+								/** @var $f Field */
+								$f = FieldManager::fetch( $f_id );
+								$f_data = $f->processRawFieldData( $new_value, $s, $message, false, $entry['entry']->get( 'id' ) );
+								$entry['entry']->setData( $f_id, $f_data );
+							}
 						}
+					}
+
+					// if values were replaced, update returned post-values
+					if( $old_fields !== $entry['fields'] && !empty($entry['fields']) ){
+						$post_values = new XMLElement('post-values');
+						General::array_to_xml( $post_values, $entry['fields'], true );
+
+						$entry['post_values'] = $post_values;
 					}
 				}
 			}
@@ -416,59 +574,78 @@
 			return $output;
 		}
 
-		private function sectionsLinkReplaceIDs($input, $field){
-			foreach($input as $handle => &$section){
+		/**
+		 * Processes a field's data for replacing variables within it's value.
+		 *
+		 * @param string|array $field_data - field data
+		 *
+		 * @return array|mixed
+		 */
+		private function sectionsReplaceGetNewValue($field_data){
 
-				foreach($section['entries'] as &$entry){
+			// array. treat every value
+			if( is_array( $field_data ) ){
+				$new_value = array();
 
-					if( array_key_exists( $field['element_name'], $entry['fields'] ) ){
-						$old_value = $entry['fields'][$field['element_name']];
-
-						// it will check only plain values for replacements
-						if( is_array( $old_value ) ) continue;
-
-						// obtain new value
-						$new_value = array();
-						$variables = array_map( 'trim', explode( ',', $old_value ) );
-
-						foreach($variables as $variable){
-							$expr = '/(?:\[|\])+/';
-							$result = preg_split( $expr, $variable, -1, PREG_SPLIT_NO_EMPTY );
-
-							// section handle
-							$bit_section = trim( $result[0], '$' );
-							array_shift( $result );
-
-							// entry position
-							if( is_numeric( $result[0] ) ){
-								$bit_position = $result[0];
-								array_shift( $result );
-							} else{
-								$bit_position = 0;
-							}
-
-							if( empty($result) || $result[0] === 'system:id' ){
-								if( !array_key_exists( $bit_section, $input ) ) continue;
-								if( !array_key_exists( $bit_position, $input[$bit_section]['entries'] ) ) continue;
-
-								$new_value[] = $input[$bit_section]['entries'][$bit_position]['entry']->get( 'id' );
-							}
-						}
-
-						// set the relation for post_back_values
-						$entry['fields'][$field['element_name']] = implode( ',', $new_value );
-
-						// set the relation for DB
-						$s = $message = null;
-
-						/** @var $f Field */
-						$f = FieldManager::fetch( $field['id'] );
-						$f_data = $f->processRawFieldData( $new_value, $s, $message, false, $entry['entry']->get( 'id' ) );
-						$entry['entry']->setData( $field['id'], $f_data );
-					}
+				foreach($field_data as $k => $v){
+					$new_value[$k] = $this->sectionsReplaceGetNewValue( $v );
 				}
 			}
+
+			// plain value. find variables and replace them
+			else{
+				// this will match all variables like: %...%
+				$regex = '/\\\\.|(%([^%\\\\]|\\\\.)+%)/';
+
+				$new_value = preg_replace_callback( $regex, array($this, 'sectionReplaceProcessValue'), $field_data );
+			}
+
+			return $new_value;
 		}
+
+		/**
+		 * Callback method to process a plain value for replaceable variables
+		 *
+		 * @param $match
+		 *
+		 * @return string|null
+		 */
+		private function sectionReplaceProcessValue($match){
+			$original = $match[1];
+			$variable = trim( $original, '%' );
+
+			// explode the parts from a variable
+			$result = preg_split( '/(?:\[|\])+/', $variable, -1, PREG_SPLIT_NO_EMPTY );
+
+			$bit_section = array_shift( $result );
+			$bit_position = isset($result[0]) && is_numeric( $result[0] ) ? array_shift( $result ) : 0;
+
+			// check if requested entry was sent with the form
+			if( !isset($this->crt_sections[$bit_section]) ) return $original;
+			if( !isset($this->crt_sections[$bit_section]['entries'][$bit_position]) ) return $original;
+
+			$entry = $this->crt_sections[$bit_section]['entries'][$bit_position];
+
+			$new_value = null;
+
+			// link the system ID only if Entry exists
+			if( empty($result) || $result[0] === 'system:id' ){
+				if( $entry['entry'] instanceof Entry ){
+					$new_value = $entry['entry']->get( 'id' );
+				}
+			}
+
+			// link other fields
+			else{
+				// Go go go deep in entry's fields array and get the value from keys
+				$new_value = $this->getValueFromMultidimArrayByKeys( $entry['fields'], $result );
+			}
+
+			if( $new_value == null ) return $original;
+
+			return $new_value;
+		}
+
 
 
 		/**
@@ -508,17 +685,35 @@
 					// Entry was created, add the good news to the return `$result`
 					$entry['done'] = true;
 
+					switch( $entry['action'] ){
+						case self::ACTION_CREATE:
+							$type = 'created';
+							$message = __( 'Entry created successfully.' );
+							break;
+
+						case self::ACTION_EDIT:
+							$type = 'edited';
+							$message = __( 'Entry edited successfully.' );
+							break;
+
+						case self::ACTION_DELETE:
+							$type = 'deleted';
+							$message = __( 'Entry deleted successfully.' );
+							break;
+
+						default:
+							$type = '';
+							$message = '';
+							break;
+					}
+
 					$entry['result']->setAttributeArray( array(
 						'result' => 'success',
-						'type' => $entry['new'] === true ? 'created' : 'edited',
+						'type' => $type,
 						'id' => $entry['entry']->get( 'id' )
 					) );
 
-					$entry['result']->appendChild( new XMLElement('message',
-						$entry['new'] === true
-							? __( 'Entry created successfully.' )
-							: __( 'Entry edited successfully.' )
-					) );
+					$entry['result']->appendChild( new XMLElement('message', $message) );
 
 					// PASSIVE FILTERS ONLY AT THIS STAGE. ENTRY HAS ALREADY BEEN CREATED.
 					if( in_array( 'send-email', $this->eParamFILTERS ) ){
@@ -528,14 +723,6 @@
 
 					$entry['result'] = $this->processPostSaveFilters( $entry['result'], $entry['fields'], $entry['entry'] );
 					$entry['result'] = $this->processFinalSaveFilters( $entry['result'], $entry['fields'], $entry['entry'] );
-
-					// post values
-					if( !empty($entry['fields']) ){
-						$post_values = new XMLElement('post-values');
-						General::array_to_xml( $post_values, $entry['fields'], true );
-
-						$entry['post_values'] = $post_values;
-					}
 				}
 			}
 
@@ -547,6 +734,34 @@
 		/*------------------------------------------------------------------------------------------------*/
 		/* Internal utilities */
 		/*------------------------------------------------------------------------------------------------*/
+
+		/**
+		 * In a multidimensional array gets the deep value indicated by keys array.
+		 *
+		 * @param $array
+		 * @param $keys
+		 *
+		 * @return null
+		 */
+		private function getValueFromMultidimArrayByKeys($array, $keys){
+			$k = array_shift( $keys );
+
+			if(
+				// if $array is no longer an array but keys still exist
+				!is_array($array) && !empty($keys)
+
+				// or key is not found
+				|| !isset($array[$k]) )
+			{
+				return null;
+			}
+
+			if( !empty($keys) ){
+				return $this->getValueFromMultidimArrayByKeys( $array[$k], $keys );
+			}
+
+			return $array[$k];
+		}
 
 		/**
 		 * Checks if errors appeared during execution.
@@ -568,7 +783,7 @@
 		}
 
 		/**
-		 * Rollback whatever entries have been created. Edited ones are not touched.
+		 * Rollback whatever entries have been created
 		 *
 		 * @param $sections
 		 */
@@ -579,7 +794,7 @@
 
 				foreach($section['entries'] as $entry){
 
-					if( $entry['new'] === true ){
+					if( $entry['action'] === self::ACTION_CREATE ){
 						$id = $entry['entry']->get( 'id' );
 
 						if( is_numeric( $id ) ){

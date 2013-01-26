@@ -22,6 +22,15 @@
 	</authors>
 
 	<releases>
+		<release version="1.1" date="2013-01-26" min="2.3"><![CDATA[
+			* Variable replacement in posted field's data now extended to any field, not only `system:id`.
+			* Reworked Identification parameteres for sform-controls.
+			* Event now passed as a string handle instead of XML node-set.
+			* Control ID identification parts are now separated by `_` instead of `-`.
+			* Reworked validation for sform-controls. It now allows individual control validation.
+			* Added a new template for helping the build of a replaceable variable.
+		]]></release>
+
 		<release version="1.0.1" date="2013-01-17" min="2.3"><![CDATA[
 			* Various Form controls fixes.
 		]]></release>
