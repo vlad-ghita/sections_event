@@ -534,7 +534,7 @@
 										<xsl:copy-of select="*"/>
 									</xsl:when>
 									<xsl:otherwise>
-										<xsl:call-template name="xcms.extend">
+										<xsl:call-template name="sform:extend">
 											<xsl:with-param name="def" select="$current"/>
 											<xsl:with-param name="in" select="."/>
 										</xsl:call-template>
