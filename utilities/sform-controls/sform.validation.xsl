@@ -595,7 +595,7 @@
 
 		<!-- Defaults to all fields that have errors -->
 		<xsl:variable name="default_selection">
-			<xsl:for-each select="$entry-data/*[ not(name() = 'filter') and @type and @label ]">
+			<xsl:for-each select="$entry-data/*[ not(name() = 'filter') and @type ]">
 				<xsl:call-template name="sform:validation-tpl-sel">
 					<xsl:with-param name="handle" select="name(.)"/>
 					<xsl:with-param name="status" select="$sform:STATUS_ERROR"/>

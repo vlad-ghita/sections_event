@@ -56,7 +56,7 @@ Here are some examples:
 
 ### Example 1. Most basic usage
 
-If you don't specify the section, the `__fields` keyword is used. This is handy if you don't necessarily want to set data for an Entry.
+If you don't specify the section, the `__fields` keyword is used. This is handy if you don't necessarily want to set data for a Symphony Entry.
 
     <xsl:call-template name="sform:input">
         <xsl:with-param name="handle" select="'title'"/>
@@ -72,9 +72,9 @@ result:
 ### Example 2. Send data to a `Books` section
 
     <xsl:call-template name="sform:input">
+        <xsl:with-param name="section" select="'books'"/>
         <xsl:with-param name="handle" select="'title'"/>
         <xsl:with-param name="value" select="'Encyclopedia'"/>
-        <xsl:with-param name="section" select="'books'"/>
     </xsl:call-template>
 
 result:
@@ -85,18 +85,18 @@ result:
 
     <!-- Book #0 -->
     <xsl:call-template name="sform:input">
-        <xsl:with-param name="handle" select="'title'"/>
-        <xsl:with-param name="value" select="'Encyclopedia'"/>
         <xsl:with-param name="section" select="'books'"/>
         <xsl:with-param name="position" select="0"/>
+        <xsl:with-param name="handle" select="'title'"/>
+        <xsl:with-param name="value" select="'Encyclopedia'"/>
     </xsl:call-template>
 
     <!-- Book #1 -->
     <xsl:call-template name="sform:input">
-        <xsl:with-param name="handle" select="'title'"/>
-        <xsl:with-param name="value" select="'XSLT Cookbook'"/>
         <xsl:with-param name="section" select="'books'"/>
         <xsl:with-param name="position" select="1"/>
+        <xsl:with-param name="handle" select="'title'"/>
+        <xsl:with-param name="value" select="'XSLT Cookbook'"/>
     </xsl:call-template>
 
 result:
@@ -108,18 +108,18 @@ result:
 
     <!-- Author #0 -->
     <xsl:call-template name="sform:input">
-        <xsl:with-param name="handle" select="'name'"/>
-        <xsl:with-param name="value" select="'John'"/>
         <xsl:with-param name="section" select="'authors'"/>
         <xsl:with-param name="position" select="0"/>
+        <xsl:with-param name="handle" select="'name'"/>
+        <xsl:with-param name="value" select="'John'"/>
     </xsl:call-template>
 
     <!-- Author #1 -->
     <xsl:call-template name="sform:input">
-        <xsl:with-param name="handle" select="'name'"/>
-        <xsl:with-param name="value" select="'Mary'"/>
         <xsl:with-param name="section" select="'authors'"/>
         <xsl:with-param name="position" select="1"/>
+        <xsl:with-param name="handle" select="'name'"/>
+        <xsl:with-param name="value" select="'Mary'"/>
     </xsl:call-template>
 
     <!-- Author #2 -->
@@ -139,22 +139,24 @@ result:
     </xsl:call-template>
 
     <xsl:call-template name="sform:input">
+        <xsl:with-param name="section" select="'books'"/>
+        <xsl:with-param name="position" select="0"/>
         <xsl:with-param name="handle" select="'authors'"/>
         <xsl:with-param name="value">
+            <!-- Link to author #1 -->
             <xsl:call-template name="sform:variable">
                 <xsl:with-param name="section" select="'authors'"/>
                 <xsl:with-param name="position" select="0"/>
                 <xsl:with-param name="handle" select="'system:id'"/>
             </xsl:call-template>
             <xsl:text>,</xsl:text>
+            <!-- Link to author #3 -->
             <xsl:call-template name="sform:variable">
                 <xsl:with-param name="section" select="'authors'"/>
                 <xsl:with-param name="position" select="2"/>
                 <xsl:with-param name="handle" select="'system:id'"/>
             </xsl:call-template>
         </xsl:with-param>
-        <xsl:with-param name="section" select="'books'"/>
-        <xsl:with-param name="position" select="0"/>
         <xsl:with-param name="attributes">
             <type>hidden</type>
         </xsl:with-param>
@@ -171,10 +173,10 @@ result:
     <xsl:call-template name="sform:input">
         <xsl:with-param name="handle" select="'authors'"/>
         <xsl:with-param name="value">
+            <!-- Link to author #2. If handle is omitted, it's assumed 'system:id' -->
             <xsl:call-template name="sform:variable">
                 <xsl:with-param name="section" select="'authors'"/>
                 <xsl:with-param name="position" select="1"/>
-                <xsl:with-param name="handle" select="'system:id'"/>
             </xsl:call-template>
         </xsl:with-param>
         <xsl:with-param name="section" select="'books'"/>
@@ -194,10 +196,11 @@ result:
     <input type="text" value="XSLT Cookbook" id="sections_books_1_title" name="sections[books][1][title]">
     <input type="hidden" value="%authors[1]%" id="sections_books_1_authors" name="sections[books][1][authors]">
 
-### Example 6. An input related to a Date/Time field
+### Example 5. An input related to a Date/Time field
 
     <xsl:call-template name="sform:input">
-        <xsl:with-param name="handle" select="'publish-date/start/ '"/>
+        <xsl:with-param name="handle" select="'publish-date'"/>
+        <xsl:with-param name="suffix" select="'start/ '"/>
         <xsl:with-param name="attributes">
             <type>date</type>
             <placeholder>Publish date</placeholder>
@@ -208,9 +211,9 @@ result:
 
     <input type="date" placeholder="Publish date" id="sections___fields_publish-date_start" name="sections[__fields][birthday][start][]">
 
-### Example #7. A complete form with validation
+### Example #6. A complete form with validation
 
-A `News` article with `Title` and `Publish date`. `Publish date` is hidden and will be formed by the values from `pseudo-date` and `pseudo-time`.
+A `News` article with `Title` and `Publish date`. `Publish date` is hidden and will be formed with values from `pseudo-date` and `pseudo-time`.
 
     <xsl:variable name="section" select="'news'"/>
     

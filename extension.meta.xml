@@ -22,6 +22,11 @@
 	</authors>
 
 	<releases>
+		<release version="1.2.1" date="2013-01-29" min="2.3"><![CDATA[
+			* Field's interpretation now includes all orfan XML nodes from Entry data.
+			* Readme fixes.
+		]]></release>
+
 		<release version="1.2" date="2013-01-29" min="2.3"><![CDATA[
 			* Fixed some validation bugs for sform-controls.
 		]]></release>
