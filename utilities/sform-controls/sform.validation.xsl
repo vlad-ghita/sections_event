@@ -59,7 +59,7 @@
 		<xsl:param name="entry-messages"></xsl:param>
 		<xsl:param name="entry-defaults">
 			<xsl:call-template name="sform:validation-tpl-msg">
-			    <xsl:with-param name="status" select="$sform:STATUS_SUCCESS"/>
+				<xsl:with-param name="status" select="$sform:STATUS_SUCCESS"/>
 				<xsl:with-param name="msg" select="'Entry successfully saved.'"/>
 			</xsl:call-template>
 
@@ -197,7 +197,7 @@
 
 		<xsl:variable name="wrappers_overloaded">
 			<xsl:call-template name="sform:extend">
-			    <xsl:with-param name="def" select="$wrappers_default"/>
+				<xsl:with-param name="def" select="$wrappers_default"/>
 				<xsl:with-param name="in" select="$html-wrappers"/>
 			</xsl:call-template>
 		</xsl:variable>
@@ -307,19 +307,12 @@
 		<xsl:param name="status"/>
 		<xsl:param name="msg"/>
 		<xsl:param name="handle" select="''"/>
-		<xsl:param name="ref" select="''"/>
 
 		<item status="{$status}">
 			<xsl:if test="$handle != ''">
 				<xsl:attribute name="handle">
 					<xsl:value-of select="$handle"/>
 				</xsl:attribute>
-			</xsl:if>
-
-			<xsl:if test="$ref != ''">
-				<ref>
-					<xsl:apply-templates select="exsl:node-set($ref)" mode="sform:html"/>
-				</ref>
 			</xsl:if>
 
 			<msg>
@@ -352,9 +345,9 @@
 			</xsl:if>
 
 			<xsl:if test="exsl:node-set($identification)/*">
-			    <id>
-				    <xsl:copy-of select="$identification"/>
-			    </id>
+				<id>
+					<xsl:copy-of select="$identification"/>
+				</id>
 			</xsl:if>
 
 			<msg>
@@ -541,8 +534,8 @@
 						<xsl:choose>
 
 							<!-- Custom -->
-							<xsl:when test="$v_messages[ @status = $item_status ]">
-								<xsl:copy-of select="$v_messages[ @status = $item_status ]/* | $v_messages[ @status = $item_status ]/text()"/>
+							<xsl:when test="$v_messages[ @status = $item_status and @handle = current()/@handle ]">
+								<xsl:copy-of select="$v_messages[ @status = $item_status and @handle = current()/@handle ]/* | $v_messages[ @status = $item_status and @handle = current()/@handle ]/text()"/>
 							</xsl:when>
 
 							<!-- Symphony -->
@@ -678,8 +671,8 @@
 						<xsl:choose>
 
 							<!-- Custom -->
-							<xsl:when test="$v_messages[ @status = $item_status ]">
-								<xsl:copy-of select="$v_messages[ @status = $item_status ]/* | $v_messages[ @status = $item_status ]/text()"/>
+							<xsl:when test="$v_messages[ @status = $item_status and @handle = current()/@handle ]">
+								<xsl:copy-of select="$v_messages[ @status = $item_status and @handle = current()/@handle ]/* | $v_messages[ @status = $item_status and @handle = current()/@handle ]/text()"/>
 							</xsl:when>
 
 							<!-- Symphony -->

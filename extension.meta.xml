@@ -22,6 +22,10 @@
 	</authors>
 
 	<releases>
+		<release version="1.2" date="2013-01-29" min="2.3"><![CDATA[
+			* Fixed some validation bugs for sform-controls.
+		]]></release>
+
 		<release version="1.1" date="2013-01-26" min="2.3"><![CDATA[
 			* Variable replacement in posted field's data now extended to any field, not only `system:id`.
 			* Reworked Identification parameteres for sform-controls.

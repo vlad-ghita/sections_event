@@ -493,7 +493,7 @@
 		<L_1 id="elem_1_3" value="oval_1_3(ignored)">
 			<L_2 name="elem_2_1" value="oval_2_1"/>
 			<L_2 name="elem_2_2" value="oval_2_2"/>
-			<L_2 name="elem_23" value="oval_23"/>otxt_3</L_1>
+			<L_2 name="elem_2_3" value="oval_2_3"/>otxt_3</L_1>
 
 		<!** delete elem_1_4 **>
 		<L_1 id="elem_1_4" extMode="delete"/>
@@ -526,7 +526,7 @@
 
 						<xsl:for-each select="$inp">
 							<xsl:copy>
-								<xsl:for-each select="@*[name() != 'extMode']| text()[string-length(normalize-space(.))>0]">
+								<xsl:for-each select="@*[name() != 'extMode'] | text()[string-length(normalize-space(.))>0]">
 									<xsl:copy/>
 								</xsl:for-each>
 								<xsl:choose>
