@@ -6,6 +6,8 @@ If you ever had to submit data from Frontend to more than one section and those 
 
 Using this approach, you can set those relations right from XSLT and they will be handled on-the-fly thus no more customizations being required.
 
+
+
 ## Features:
 
 * __One event to rule them all.__ It takes the form data and dispatches the processing for all sections where it should be.
@@ -13,9 +15,13 @@ Using this approach, you can set those relations right from XSLT and they will b
 * __Up to date Form controls.__ More complex fields have arisen lately. @nickdunn's Form Controls have fallen behind. The `Section Form Controls` offer updated and flexible utilities to help with the new fields and challenges.
 * __Built in multiple entries support.__ Multiple entries are now supported by default without needing to apply another filter. Using `Section Form Controls`, sending multiple entries at once becomes a breeze.
 
+
+
 ## Install
 
 Installation as usual.
+
+
 
 ## Usage
 
@@ -25,9 +31,82 @@ Installation as usual.
 - add the `sform` namespace to your `page.xsl` (eg: `xmlns:sform="http://xanderadvertising.com/xslt"`)
 - start building forms!
 
+
+
 ## `Section Form Controls` utilities
 
-__NB:__ These utilities can be used with any event and they will try to determine correct data from that event (eg: Members: * events).
+These utilities were inspired by @nick-dunn's Form Controls and exist to help with form creation and validation. 
+
+#### Validation
+
+An event in Symphony **typically** returns a status message regarding event success or failure, error & success status for various filters and **only** status errors about the fields in the form. The [sform:validation-interpret](https://github.com/vlad-ghita/sections_event/blob/master/utilities/sform-controls/sform.validation.xsl#L50) template tries to identify these elements in your event and return a consistent interpretation report about what's going on. Based on this report, you can output your errors automatically using the `sform:validation-render` template or do whatever you please.
+
+An interpretation report will have 3 group nodes:
+
+- `entry` - status regarding the entry / event that was process
+- `filters` - status about each filter. Filters are determined by those nodes named `filter` which do not have an `type` attribute
+- `fields` - status about every field that was found. Fields are all nodes that have an `type` attribute.
+
+Each group contains `items`. An `item` is made of:
+
+- `handle` attribute - acts as an ID.
+- `status` attribute - informs abount the status of this item. It can have 2 values at the moment: [`$sform:STATUS_SUCCESS`](https://github.com/vlad-ghita/sections_event/blob/master/utilities/sform-controls/sform.validation.xsl#L13) and [`$sform:STATUS_ERROR`](https://github.com/vlad-ghita/sections_event/blob/master/utilities/sform-controls/sform.validation.xsl#L14).
+- `msg` child - cointains a user friendly message.
+- `original` child - contains the original Symphony data from which this `item` was determined
+
+Here's an example of an event interpretation:
+
+    <entry cnt-success="0" cnt-error="1">
+        <item handle="member-login-info" status="error">
+            <msg>
+                There were errors trying to log you in.
+            </msg>
+            <original>
+                <member-login-info logged-in="no" result="error"></member-login-info>
+            </original>
+        </item>
+    </entry>
+
+    <filters cnt-success="0" cnt-error="1">
+		<item handle="etm-members-generate-recovery-code" status="error">
+			<msg>
+				There was a	problem	sending	your email.	Please inform us at
+				<a href="mailto:secretariat@xanderadvertising.com">secretariat@xanderadvertising.com</a>.
+			</msg>
+			<original>
+				<filter	name="etm-members-generate-recovery-code" status="failed">mail() [
+					<a href="function.mail">function.mail</a>]:	Failed to connect to mailserver	at "dev_xander" port 25, verify your "SMTP" and "smtp_port" setting in php.ini or use ini_set()
+				</filter>
+			</original>
+		</item>
+    </filters>
+
+    <fields cnt-success="0" cnt-error="2">
+        <item handle="password" status="error" label="Password">
+            <id>
+                <prefix>fields</prefix>
+                <section></section>
+                <position>SFORM_NULL</position>
+            </id>
+            <msg>Password is a required field.</msg>
+            <original>
+                <password type="missing" message="Password is a required field." label="Password"></password>
+            </original>
+        </item>
+        <item handle="username" status="error" label="Username">
+            <id>
+                <prefix>fields</prefix>
+                <section></section>
+                <position>SFORM_NULL</position>
+            </id>
+            <msg>Username is a required field.</msg>
+            <original>
+                <username type="missing" message="Username is a required field." label="Username"></username>
+            </original>
+        </item>
+    </fields>
+
+#### Utilities
 
 All utilities use these parameters:
 
@@ -52,6 +131,8 @@ Element data
 * `postback-value` (optional, node set): Value to use after form was posted and page reloaded.
 * `postback-value-enabled` (optional, node set): Switcher to enable the display of postback value.
 
+
+
 Here are some examples:
 
 ### Example 1. Most basic usage
@@ -69,6 +150,8 @@ result:
 
     <input type="text" placeholder="Insert title here" id="sections___fields_title" name="sections[__fields][title]">
 
+
+
 ### Example 2. Send data to a `Books` section
 
     <xsl:call-template name="sform:input">
@@ -80,6 +163,8 @@ result:
 result:
 
     <input type="text" value="Encyclopedia" id="sections_books_title" name="sections[books][title]">
+
+
 
 ### Example 3. Send multiple entries at once #1
 
@@ -103,6 +188,8 @@ result:
 
     <input type="text" value="Encyclopedia" id="sections_books_0_title" name="sections[books][0][title]">
     <input type="text" value="XSLT Cookbook" id="sections_books_1_title" name="sections[books][1][title]">
+
+
 
 ### Example 4. Send multiple entries at once #2 (many to many relation between Books and Authors)
 
@@ -196,6 +283,8 @@ result:
     <input type="text" value="XSLT Cookbook" id="sections_books_1_title" name="sections[books][1][title]">
     <input type="hidden" value="%authors[1]%" id="sections_books_1_authors" name="sections[books][1][authors]">
 
+
+
 ### Example 5. An input related to a Date/Time field
 
     <xsl:call-template name="sform:input">
@@ -210,6 +299,8 @@ result:
 result:
 
     <input type="date" placeholder="Publish date" id="sections___fields_publish-date_start" name="sections[__fields][birthday][start][]">
+
+
 
 ### Example #6. A complete form with validation
 
