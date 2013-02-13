@@ -298,7 +298,7 @@ result:
     
 result:
 
-    <input type="date" placeholder="Publish date" id="sections___fields_publish-date_start" name="sections[__fields][birthday][start][]">
+    <input type="date" placeholder="Publish date" id="sections___fields_publish-date_start" name="sections[__fields][publish-date][start][]">
 
 
 
