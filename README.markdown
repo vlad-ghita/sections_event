@@ -211,18 +211,18 @@ result:
 
     <!-- Author #2 -->
     <xsl:call-template name="sform:input">
-        <xsl:with-param name="handle" select="'name'"/>
-        <xsl:with-param name="value" select="'Andrew'"/>
         <xsl:with-param name="section" select="'authors'"/>
         <xsl:with-param name="position" select="2"/>
+        <xsl:with-param name="handle" select="'name'"/>
+        <xsl:with-param name="value" select="'Andrew'"/>
     </xsl:call-template>
 
     <!-- Book #0 -->
     <xsl:call-template name="sform:input">
-        <xsl:with-param name="handle" select="'title'"/>
-        <xsl:with-param name="value" select="'Encyclopedia'"/>
         <xsl:with-param name="section" select="'books'"/>
         <xsl:with-param name="position" select="0"/>
+        <xsl:with-param name="handle" select="'title'"/>
+        <xsl:with-param name="value" select="'Encyclopedia'"/>
     </xsl:call-template>
 
     <xsl:call-template name="sform:input">
@@ -251,13 +251,15 @@ result:
 
     <!-- Book #1 -->
     <xsl:call-template name="sform:input">
-        <xsl:with-param name="handle" select="'title'"/>
-        <xsl:with-param name="value" select="'XSLT Cookbook'"/>
         <xsl:with-param name="section" select="'books'"/>
         <xsl:with-param name="position" select="1"/>
+        <xsl:with-param name="handle" select="'title'"/>
+        <xsl:with-param name="value" select="'XSLT Cookbook'"/>
     </xsl:call-template>
 
     <xsl:call-template name="sform:input">
+        <xsl:with-param name="section" select="'books'"/>
+        <xsl:with-param name="position" select="1"/>
         <xsl:with-param name="handle" select="'authors'"/>
         <xsl:with-param name="value">
             <!-- Link to author #2. If handle is omitted, it's assumed 'system:id' -->
@@ -266,8 +268,6 @@ result:
                 <xsl:with-param name="position" select="1"/>
             </xsl:call-template>
         </xsl:with-param>
-        <xsl:with-param name="section" select="'books'"/>
-        <xsl:with-param name="position" select="1"/>
         <xsl:with-param name="attributes">
             <type>hidden</type>
         </xsl:with-param>
