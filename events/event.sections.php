@@ -99,7 +99,7 @@
 		 * @return XMLElement
 		 */
 		public function load(){
-			if( isset($_POST['action']['sections']) ){
+			if( isset($_REQUEST['action']['sections']) ){
 				return $this->execute();
 			}
 		}
@@ -110,7 +110,7 @@
 		 * @return XMLElement
 		 */
 		public function execute(){
-			$sections_post = $_POST['sections'];
+			$sections_post = $_REQUEST['sections'];
 
 			// store the redirect
 			$redirect = '';
@@ -201,7 +201,8 @@
 
 			// redirect
 			if( !empty($redirect) ){
-				redirect( $redirect );
+				$processed_redirect = $this->sectionsReplaceGetNewValue($redirect);
+				redirect( $processed_redirect );
 			}
 
 			return $this->buildOutput( $sections_commit );
@@ -329,7 +330,9 @@
 
 						$entries[$position] = $this->sectionsPrepareEntry( $position, $fields, $entry_id, $section_id, $action );
 					}
-				} // no fields submitted. Don't process section.
+				}
+
+				// no fields submitted. Don't process section.
 				else{
 					$done = true;
 				}
@@ -477,10 +480,33 @@
 
 					$errors = array();
 
-					if( __ENTRY_FIELD_ERROR__ == $entry['entry']->checkPostData( $entry['fields'], $errors, ($entry['entry']->get( 'id' ) ? true : false) ) ){
+					$entry_status = __ENTRY_OK__;
+					$schema = FieldManager::fetchFieldsSchema( $section['id'] );
+
+					$ignore_missing_fields = ($entry['entry']->get( 'id' ) ? true : false);
+
+					foreach($schema as $info){
+						$result = null;
+						$message = null;
+						$field = FieldManager::fetch( $info['id'] );
+
+						if( $ignore_missing_fields && !isset($entry['fields'][$info['element_name']]) ) continue;
+
+						$field_data = isset($entry['fields'][$info['element_name']]) ? $entry['fields'][$info['element_name']] : null;
+
+						$field_status = $field->checkPostFieldData( $field_data, $message, $entry['entry']->get( 'id' ) );
+
+						if( $field_status != Field::__OK__ ){
+							$entry_status = __ENTRY_FIELD_ERROR__;
+							$errors[$info['id']]['code'] = $field_status;
+							$errors[$info['id']]['message'] = $message;
+						}
+					}
+
+					if( $entry_status !== __ENTRY_OK__ ){
 						$this->errors['check'] = true;
 						$entry['done'] = true;
-						$entry['result'] = self::appendErrors( $entry['result'], $entry['fields'], $errors );
+						$entry['result'] = $this->_appendErrors( $entry['result'], $entry['fields'], $errors );
 					}
 				}
 			}
@@ -511,11 +537,36 @@
 
 					$errors = array();
 
+					/**
+					 * Pre commit of entry.
+					 *
+					 * @delegate SectionsEvent_EntryPreCommit
+					 * @param string $context
+					 * '*'
+					 * @param int $section_id
+					 * @param Entry $entry
+					 * @param array $fields
+					 */
+					Symphony::ExtensionManager()->notifyMembers('SectionsEvent_EntryPreCommit', '*', array('section_id' => $section['id'], 'entry' => &$entry['entry'], 'fields' => &$entry['fields']));
+
 					if( __ENTRY_OK__ != $entry['entry']->setDataFromPost( $entry['fields'], $errors, false, ($entry['entry']->get( 'id' ) ? true : false) ) ){
 						$this->errors['set'] = true;
 						$entry['done'] = true;
 						$entry['result'] = self::appendErrors( $entry['result'], $entry['fields'], $errors );
+						continue;
 					}
+
+					/**
+					 * Post commit of entry.
+					 *
+					 * @delegate SectionsEvent_EntryPostCommit
+					 * @param string $context
+					 * '*'
+					 * @param int $section_id
+					 * @param Entry $entry
+					 * @param array $fields
+					 */
+					Symphony::ExtensionManager()->notifyMembers('SectionsEvent_EntryPostCommit', '*', array('section_id' => $section['id'], 'entry' => $entry['entry'], 'fields' => $entry['fields']));
 				}
 			}
 
@@ -735,6 +786,31 @@
 		/* Internal utilities */
 		/*------------------------------------------------------------------------------------------------*/
 
+		private function _appendErrors(XMLElement $result, array $fields, $errors){
+			$result->setAttribute( 'result', 'error' );
+			$result->appendChild( new XMLElement('message', __( 'Entry encountered errors when saving.' )) );
+
+			foreach($errors as $field_id => $data){
+				$field = FieldManager::fetch( $field_id );
+
+				if( is_array( $fields[$field->get( 'element_name' )] ) ){
+					$type = array_reduce( $fields[$field->get( 'element_name' )], array('SectionEvent', '__reduceType') );
+				}
+				else{
+					$type = ($fields[$field->get( 'element_name' )] == '') ? 'missing' : 'invalid';
+				}
+
+				$result->appendChild( new XMLElement($field->get( 'element_name' ), null, array(
+					'label' => General::sanitize( $field->get( 'label' ) ),
+					'type' => $type,
+					'message' => General::sanitize( $data['message'] ),
+					'code' => $data['code']
+				)) );
+			}
+
+			return $result;
+		}
+
 		/**
 		 * In a multidimensional array gets the deep value indicated by keys array.
 		 *
@@ -748,11 +824,11 @@
 
 			if(
 				// if $array is no longer an array but keys still exist
-				!is_array($array) && !empty($keys)
+				!is_array( $array ) && !empty($keys)
 
 				// or key is not found
-				|| !isset($array[$k]) )
-			{
+				|| !isset($array[$k])
+			){
 				return null;
 			}
 

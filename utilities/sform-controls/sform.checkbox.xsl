@@ -109,7 +109,7 @@
 				<xsl:value-of select="$initial-value"/>
 			</value>
 
-			<xsl:if test="($postback-value-enabled = true() and $pb-value = $initial-value) or ($pb-value = '' and $attribs/checked = 'checked')">
+			<xsl:if test="($postback-value-enabled = true() and $pb-value = $initial-value and $initial-value != '') or ($pb-value = '' and $attribs/checked)">
 				<checked>checked</checked>
 			</xsl:if>
 
@@ -122,6 +122,7 @@
 				and name() != 'value'
 			]"/>
 		</xsl:variable>
+
 
 		<xsl:call-template name="sform:render">
 			<xsl:with-param name="element" select="'input'"/>

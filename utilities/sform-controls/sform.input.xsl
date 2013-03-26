@@ -70,6 +70,8 @@
 
 		<xsl:variable name="initial-value" select="normalize-space($value)"/>
 
+		<xsl:variable name="entry-data" select="exsl:node-set(sform:entry-data($event, $section, $position))/*"/>
+
 		<xsl:variable name="pb-value">
 			<xsl:choose>
 				<xsl:when test="$postback-value != ''">
@@ -77,11 +79,9 @@
 				</xsl:when>
 				<xsl:otherwise>
 					<xsl:call-template name="sform:postback-value">
-						<xsl:with-param name="event" select="$event"/>
-						<xsl:with-param name="section" select="$section"/>
-						<xsl:with-param name="position" select="$position"/>
 						<xsl:with-param name="handle" select="$handle"/>
 						<xsl:with-param name="suffix" select="$suffix"/>
+						<xsl:with-param name="entry-data" select="$entry-data"/>
 					</xsl:call-template>
 				</xsl:otherwise>
 			</xsl:choose>
@@ -108,15 +108,13 @@
 					<xsl:when test="$attribs/type">
 						<xsl:value-of select="$attribs/type"/>
 					</xsl:when>
-					<xsl:otherwise>
-						<xsl:text>text</xsl:text>
-					</xsl:otherwise>
+					<xsl:otherwise>text</xsl:otherwise>
 				</xsl:choose>
 			</type>
 
 			<value>
 				<xsl:choose>
-					<xsl:when test="$postback-value-enabled = true() and /data/events/*[ name() = $event ] and ($initial-value != $pb-value)">
+					<xsl:when test="$postback-value-enabled = true() and $entry-data">
 						<xsl:value-of select="$pb-value"/>
 					</xsl:when>
 					<xsl:otherwise>
@@ -135,7 +133,7 @@
 		</xsl:variable>
 
 		<xsl:call-template name="sform:render">
-		    <xsl:with-param name="element" select="'input'"/>
+			<xsl:with-param name="element" select="'input'"/>
 			<xsl:with-param name="attributes" select="$attrs"/>
 		</xsl:call-template>
 	</xsl:template>

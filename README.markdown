@@ -43,15 +43,15 @@ An event in Symphony **typically** returns a status message regarding event succ
 
 An interpretation report will have 3 group nodes:
 
-- `entry` - status regarding the entry / event that was process
+- `entry` - status regarding the entry / event that was processed
 - `filters` - status about each filter. Filters are determined by those nodes named `filter` which do not have an `type` attribute
 - `fields` - status about every field that was found. Fields are all nodes that have an `type` attribute.
 
 Each group contains `items`. An `item` is made of:
 
 - `handle` attribute - acts as an ID.
-- `status` attribute - informs abount the status of this item. It can have 2 values at the moment: [`$sform:STATUS_SUCCESS`](https://github.com/vlad-ghita/sections_event/blob/master/utilities/sform-controls/sform.validation.xsl#L13) and [`$sform:STATUS_ERROR`](https://github.com/vlad-ghita/sections_event/blob/master/utilities/sform-controls/sform.validation.xsl#L14).
-- `msg` child - cointains a user friendly message.
+- `status` attribute - informs about the status of this item. It can have 2 values at the moment: [`$sform:STATUS_SUCCESS`](https://github.com/vlad-ghita/sections_event/blob/master/utilities/sform-controls/sform.validation.xsl#L13) and [`$sform:STATUS_ERROR`](https://github.com/vlad-ghita/sections_event/blob/master/utilities/sform-controls/sform.validation.xsl#L14).
+- `msg` child - contains a user friendly message.
 - `original` child - contains the original Symphony data from which this `item` was determined
 
 Here's an example of an event interpretation:
@@ -193,7 +193,7 @@ result:
 
 ### Example 4. Send multiple entries at once #2 (many to many relation between Books and Authors)
 
-    <!-- Author #0 -->
+    <!-- Author #0 name -->
     <xsl:call-template name="sform:input">
         <xsl:with-param name="section" select="'authors'"/>
         <xsl:with-param name="position" select="0"/>
@@ -201,7 +201,7 @@ result:
         <xsl:with-param name="value" select="'John'"/>
     </xsl:call-template>
 
-    <!-- Author #1 -->
+    <!-- Author #1 name -->
     <xsl:call-template name="sform:input">
         <xsl:with-param name="section" select="'authors'"/>
         <xsl:with-param name="position" select="1"/>
@@ -209,7 +209,7 @@ result:
         <xsl:with-param name="value" select="'Mary'"/>
     </xsl:call-template>
 
-    <!-- Author #2 -->
+    <!-- Author #2 name -->
     <xsl:call-template name="sform:input">
         <xsl:with-param name="section" select="'authors'"/>
         <xsl:with-param name="position" select="2"/>
@@ -217,7 +217,7 @@ result:
         <xsl:with-param name="value" select="'Andrew'"/>
     </xsl:call-template>
 
-    <!-- Book #0 -->
+    <!-- Book #0 title -->
     <xsl:call-template name="sform:input">
         <xsl:with-param name="section" select="'books'"/>
         <xsl:with-param name="position" select="0"/>
@@ -225,6 +225,7 @@ result:
         <xsl:with-param name="value" select="'Encyclopedia'"/>
     </xsl:call-template>
 
+	<!-- Book #0 authors -->
     <xsl:call-template name="sform:input">
         <xsl:with-param name="section" select="'books'"/>
         <xsl:with-param name="position" select="0"/>
@@ -249,7 +250,7 @@ result:
         </xsl:with-param>
     </xsl:call-template>
 
-    <!-- Book #1 -->
+    <!-- Book #1 title -->
     <xsl:call-template name="sform:input">
         <xsl:with-param name="section" select="'books'"/>
         <xsl:with-param name="position" select="1"/>
@@ -257,6 +258,7 @@ result:
         <xsl:with-param name="value" select="'XSLT Cookbook'"/>
     </xsl:call-template>
 
+	<!-- Book #1 authors -->
     <xsl:call-template name="sform:input">
         <xsl:with-param name="section" select="'books'"/>
         <xsl:with-param name="position" select="1"/>
@@ -312,13 +314,18 @@ A `News` article with `Title` and `Publish date`. `Publish date` is hidden and w
 
         <!-- Interpret the values from event. It can be customized. See the implementation -->
         <xsl:variable name="interpretation">
-            <xsl:call-template name="sform:validation-interpret"/>
+            <xsl:call-template name="sform:validation-interpret">
+                <xsl:with-param name="section" select="$section"/>
+            </xsl:call-template/>
         </xsl:variable>
 
         <!-- Render this interpretation as pretty HTML. It can be customized. See the implementation -->
         <xsl:call-template name="sform:validation-render">
             <xsl:with-param name="interpretation" select="$interpretation"/>
         </xsl:call-template>
+
+		<!-- As a very important optimization we're passing the $interpretation variable as a parameter to all utilities -->
+
 
         <!-- Title -->
         <xsl:call-template name="sform:label">
@@ -336,6 +343,7 @@ A `News` article with `Title` and `Publish date`. `Publish date` is hidden and w
                 <placeholder>insert title</placeholder>
             </xsl:with-param>
         </xsl:call-template>
+
 
         <!-- Pseudo Date - This field does not exist. I use it just as a variable for Publish date field (see below) -->
         <xsl:call-template name="sform:label">
@@ -373,7 +381,7 @@ A `News` article with `Title` and `Publish date`. `Publish date` is hidden and w
             </xsl:with-param>
         </xsl:call-template>
 
-        <!-- Publish date : Date/time field -->
+        <!-- Publish date : Date/time field - It's value will be composed from "Pseudo date" and "Pseudo time" -->
         <xsl:call-template name="sform:input">
             <xsl:with-param name="section" select="$section"/>
             <xsl:with-param name="handle" select="'publish-date'"/>
@@ -396,6 +404,9 @@ A `News` article with `Title` and `Publish date`. `Publish date` is hidden and w
             <xsl:with-param name="postback-value-enabled" select="false()"/>
         </xsl:call-template>
 
+		<!-- The redirect will benefit from the replacements as well -->
+		<input type="hidden" name="sections[__redirect]" value="{/data/params/root}/news/%{$section}[system:id]%">
+
         <button type="submit" name="action[sections]">Send</button>
     </form>
 
@@ -409,5 +420,6 @@ result:
         <label for="sections_news_pseudo-time">Time</label>
         <input type="text" placeholder="hh:mm" value="20:15" id="sections_news_pseudo-time" name="sections[news][pseudo-time]">
         <input type="hidden" value="%news[pseudo-date]%T%news[pseudo-time]%" id="sections_news_publish-date_start" name="sections[news][publish-date][start][]">
+        <input type="hidden" name="sections[__redirect]" value="http://www.example.com/news/%{$section}[system:id]%">
         <button name="action[sections]" type="submit">Send</button>
     </form>

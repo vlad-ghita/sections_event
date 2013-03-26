@@ -3,8 +3,9 @@
 		version="1.0"
 		xmlns:xsl="http://www.w3.org/1999/XSL/Transform"
 		xmlns:exsl="http://exslt.org/common"
+		xmlns:func="http://exslt.org/functions"
 		xmlns:sform="http://xanderadvertising.com/xslt"
-		extension-element-prefixes="exsl sform">
+		extension-element-prefixes="exsl func sform">
 
 
 
@@ -38,7 +39,7 @@
 	<xsl:variable name="sform:prefix" select="'sections'"/>
 	<xsl:variable name="sform:section" select="'__fields'"/>
 	<xsl:variable name="sform:position" select="$sform:null"/>
-	<xsl:variable name="sform:suffix" select="$sform:null"/>
+	<xsl:variable name="sform:suffix" select="''"/>
 
 	<!-- Class for invalid form controls -->
 	<xsl:variable name="sform:invalid-class" select="'error'"/>
@@ -148,16 +149,31 @@
 				    </xsl:choose>
 			    </xsl:variable>
 
-			    <xsl:copy-of select="/data/events/*[ name() = $event ]/*[ name() = $section ]/entry[ @position = $pos ]"/>
+			    <xsl:copy-of select="$events/*[ name() = $event ]/*[ name() = $section ]/entry[ @position = $pos ]"/>
 		    </xsl:when>
 
 			<!-- Other event -->
 		    <xsl:otherwise>
-			    <xsl:copy-of select="/data/events/*[ name() = $event ]"/>
+			    <xsl:copy-of select="$events/*[ name() = $event ]"/>
 		    </xsl:otherwise>
 
 		</xsl:choose>
 	</xsl:template>
+
+
+	<func:function name="sform:entry-data">
+		<xsl:param name="event" select="$sform:event"/>
+		<xsl:param name="section" select="$sform:section"/>
+		<xsl:param name="position" select="$sform:position"/>
+
+		<func:result>
+			<xsl:call-template name="sform:entry-data">
+				<xsl:with-param name="event" select="$event"/>
+				<xsl:with-param name="section" select="$section"/>
+				<xsl:with-param name="position" select="$position"/>
+			</xsl:call-template>
+		</func:result>
+	</func:function>
 
 
 
@@ -317,14 +333,7 @@
 		<xsl:param name="position" select="$sform:position"/>
 		<xsl:param name="handle"/>
 		<xsl:param name="suffix" select="$sform:suffix"/>
-
-		<xsl:variable name="entry-data">
-			<xsl:call-template name="sform:entry-data">
-				<xsl:with-param name="event" select="$event"/>
-				<xsl:with-param name="section" select="$section"/>
-				<xsl:with-param name="position" select="$position"/>
-			</xsl:call-template>
-		</xsl:variable>
+		<xsl:param name="entry-data" select="exsl:node-set(sform:entry-data($event, $section, $position))/*"/>
 
 		<xsl:variable name="suf">
 			<xsl:if test="$suffix != $sform:suffix">
@@ -333,7 +342,7 @@
 		</xsl:variable>
 
 		<xsl:call-template name="sform:postback-value-recurse">
-			<xsl:with-param name="node" select="exsl:node-set($entry-data)/*/post-values/*[ name() = $handle ]"/>
+			<xsl:with-param name="node" select="exsl:node-set($entry-data)//post-values/*[ name() = $handle ]"/>
 			<xsl:with-param name="string" select="$suf"/>
 		</xsl:call-template>
 	</xsl:template>
@@ -357,9 +366,14 @@
 				</xsl:call-template>
 			</xsl:when>
 
-			<!-- This marks an expected item from a classic array -->
+			<!-- An array item with auto key -->
 			<xsl:when test="$string = ' '">
 				<xsl:copy-of select="$node/item"/>
+			</xsl:when>
+
+			<!-- An array item with key -->
+			<xsl:when test="number($string) = $string">
+				<xsl:copy-of select="$node/item[ @index = number($string) + 1 ]"/>
 			</xsl:when>
 
 			<!-- Plain node value -->

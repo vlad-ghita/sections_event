@@ -70,6 +70,8 @@
 
 		<xsl:variable name="initial-value" select="exsl:node-set($value)"/>
 
+		<xsl:variable name="entry-data" select="exsl:node-set(sform:entry-data($event, $section, $position))/*"/>
+
 		<xsl:variable name="pb-value">
 			<xsl:choose>
 				<xsl:when test="exsl:node-set($postback-value)/* or exsl:node-set($postback-value)/text()">
@@ -77,11 +79,9 @@
 				</xsl:when>
 				<xsl:otherwise>
 					<xsl:call-template name="sform:postback-value">
-						<xsl:with-param name="event" select="$event"/>
-						<xsl:with-param name="section" select="$section"/>
-						<xsl:with-param name="position" select="$position"/>
 						<xsl:with-param name="handle" select="$handle"/>
 						<xsl:with-param name="suffix" select="$suffix"/>
+						<xsl:with-param name="entry-data" select="$entry-data"/>
 					</xsl:call-template>
 				</xsl:otherwise>
 			</xsl:choose>
@@ -115,7 +115,7 @@
 			<xsl:with-param name="attributes" select="$attrs"/>
 			<xsl:with-param name="value">
 				<xsl:choose>
-					<xsl:when test="$postback-value-enabled = true() and /data/events/*[ name() = $event ]">
+					<xsl:when test="$postback-value-enabled = true() and $entry-data">
 						<xsl:copy-of select="exsl:node-set($pb-value)/* | exsl:node-set($pb-value)/text()"/>
 					</xsl:when>
 					<xsl:otherwise>

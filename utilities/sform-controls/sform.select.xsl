@@ -146,7 +146,7 @@
 				<xsl:with-param name="iterations" select="31"/>
 			</xsl:call-template>
 		</xsl:param>
-		
+
 		<xsl:call-template name="sform:select-base">
 			<xsl:with-param name="event" select="$event"/>
 			<xsl:with-param name="prefix" select="$prefix"/>
@@ -405,31 +405,27 @@
 
 		<xsl:variable name="attribs" select="exsl:node-set($attributes)"/>
 
-		<xsl:variable name="h">
-			<xsl:choose>
-			    <xsl:when test="$attribs/multiple = 'multiple'">
-			        <xsl:value-of select="concat($handle,'/ ')"/>
-			    </xsl:when>
-			    <xsl:otherwise>
-			        <xsl:value-of select="$handle"/>
-			    </xsl:otherwise>
-			</xsl:choose>
+		<xsl:variable name="s">
+			<xsl:value-of select="$suffix"/>
+			<xsl:if test="$attribs/multiple = 'multiple'">
+				<xsl:text>/ </xsl:text>
+			</xsl:if>
 		</xsl:variable>
+
+		<xsl:variable name="entry-data" select="exsl:node-set(sform:entry-data($event, $section, $position))/*"/>
 
 		<xsl:variable name="pb-value">
 			<xsl:choose>
-			    <xsl:when test="$postback-value != ''">
-				    <xsl:value-of select="$postback-value"/>
-			    </xsl:when>
-			    <xsl:otherwise>
-				    <xsl:call-template name="sform:postback-value">
-					    <xsl:with-param name="event" select="$event"/>
-					    <xsl:with-param name="section" select="$section"/>
-					    <xsl:with-param name="position" select="$position"/>
-					    <xsl:with-param name="handle" select="$h"/>
-					    <xsl:with-param name="suffix" select="$suffix"/>
-				    </xsl:call-template>
-			    </xsl:otherwise>
+				<xsl:when test="$postback-value != ''">
+					<xsl:value-of select="$postback-value"/>
+				</xsl:when>
+				<xsl:otherwise>
+					<xsl:call-template name="sform:postback-value">
+						<xsl:with-param name="handle" select="$handle"/>
+						<xsl:with-param name="suffix" select="$s"/>
+						<xsl:with-param name="entry-data" select="$entry-data"/>
+					</xsl:call-template>
+				</xsl:otherwise>
 			</xsl:choose>
 		</xsl:variable>
 
@@ -437,20 +433,20 @@
 
 		<xsl:variable name="current-value">
 			<xsl:choose>
-			    <xsl:when test="$postback-value-enabled = true() and /data/events/*[ name() = $event ]">
-				    <xsl:value-of select="$pb-value"/>
-			    </xsl:when>
-			    <xsl:otherwise>
-				    <xsl:value-of select="$initial-value"/>
-			    </xsl:otherwise>
+				<xsl:when test="$postback-value-enabled = true() and $entry-data">
+					<xsl:value-of select="$pb-value"/>
+				</xsl:when>
+				<xsl:otherwise>
+					<xsl:value-of select="$initial-value"/>
+				</xsl:otherwise>
 			</xsl:choose>
 		</xsl:variable>
 
 		<xsl:variable name="attrs">
 			<xsl:call-template name="sform:attributes-general">
-				<xsl:with-param name="handle" select="$h"/>
+				<xsl:with-param name="handle" select="$handle"/>
 				<xsl:with-param name="prefix" select="$prefix"/>
-				<xsl:with-param name="suffix" select="$suffix"/>
+				<xsl:with-param name="suffix" select="$s"/>
 				<xsl:with-param name="section" select="$section"/>
 				<xsl:with-param name="position" select="$position"/>
 				<xsl:with-param name="name" select="$attribs/name"/>

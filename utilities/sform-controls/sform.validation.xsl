@@ -593,7 +593,7 @@
 		<xsl:param name="messages"/>
 		<xsl:param name="defaults"/>
 
-		<!-- Defaults to all fields that have errors -->
+		<!-- These are the fields that have errors -->
 		<xsl:variable name="default_selection">
 			<xsl:for-each select="$entry-data/*[ not(name() = 'filter') and @type ]">
 				<xsl:call-template name="sform:validation-tpl-sel">
