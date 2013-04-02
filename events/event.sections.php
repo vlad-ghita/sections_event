@@ -945,7 +945,7 @@
 					reset($data_a[$handle]);
 
 					// indexed entries
-					if( is_numeric($data_a[$handle]) ){
+					if( is_numeric(key($data_a[$handle])) ){
 						$data_c = $data_a[$handle][$position];
 					}
 					// non-indexed entries
