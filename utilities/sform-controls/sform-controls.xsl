@@ -40,6 +40,7 @@
 	<xsl:variable name="sform:section" select="'__fields'"/>
 	<xsl:variable name="sform:position" select="$sform:null"/>
 	<xsl:variable name="sform:suffix" select="''"/>
+	<xsl:variable name="sform:events" select="/data/events"/>
 
 	<!-- Class for invalid form controls -->
 	<xsl:variable name="sform:invalid-class" select="'error'"/>
@@ -149,12 +150,12 @@
 				    </xsl:choose>
 			    </xsl:variable>
 
-			    <xsl:copy-of select="$events/*[ name() = $event ]/*[ name() = $section ]/entry[ @position = $pos ]"/>
+			    <xsl:copy-of select="$sform:events/*[ name() = $event ]/*[ name() = $section ]/entry[ @position = $pos ]"/>
 		    </xsl:when>
 
 			<!-- Other event -->
 		    <xsl:otherwise>
-			    <xsl:copy-of select="$events/*[ name() = $event ]"/>
+			    <xsl:copy-of select="$sform:events/*[ name() = $event ]"/>
 		    </xsl:otherwise>
 
 		</xsl:choose>

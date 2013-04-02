@@ -316,7 +316,7 @@ A `News` article with `Title` and `Publish date`. `Publish date` is hidden and w
         <xsl:variable name="interpretation">
             <xsl:call-template name="sform:validation-interpret">
                 <xsl:with-param name="section" select="$section"/>
-            </xsl:call-template/>
+            </xsl:call-template>
         </xsl:variable>
 
         <!-- Render this interpretation as pretty HTML. It can be customized. See the implementation -->
@@ -405,7 +405,7 @@ A `News` article with `Title` and `Publish date`. `Publish date` is hidden and w
         </xsl:call-template>
 
 		<!-- The redirect will benefit from the replacements as well -->
-		<input type="hidden" name="sections[__redirect]" value="{/data/params/root}/news/%{$section}[system:id]%">
+		<input type="hidden" name="sections[__redirect]" value="{/data/params/root}/news/%{$section}[system:id]%"/>
 
         <button type="submit" name="action[sections]">Send</button>
     </form>

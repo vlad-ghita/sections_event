@@ -201,7 +201,7 @@
 
 			// redirect
 			if( !empty($redirect) ){
-				$processed_redirect = $this->sectionsReplaceGetNewValue($redirect);
+				$processed_redirect = $this->sectionsReplaceGetNewValue( $redirect );
 				redirect( $processed_redirect );
 			}
 
@@ -308,25 +308,20 @@
 						$id_edit = isset($__edit[$position]) ? $__edit[$position] : null;
 						$id_delete = isset($__delete[$position]) ? $__delete[$position] : null;
 
-						$to_edit = is_numeric( $id_edit );
-						$to_delete = is_numeric( $id_delete );
-
-						$action = self::ACTION_NONE;
-						$entry_id = null;
-
-						if( $to_delete ){
+						if( is_numeric( $id_delete ) ){
 							$action = self::ACTION_DELETE;
 							$entry_id = $id_delete;
 						}
-						else{
-							if( $to_edit ){
-								$action = self::ACTION_EDIT;
-								$entry_id = $id_edit;
-							}
-							else{
-								$action = self::ACTION_CREATE;
-							}
+						elseif( is_numeric( $id_edit ) ){
+							$action = self::ACTION_EDIT;
+							$entry_id = $id_edit;
 						}
+						else{
+							$action = self::ACTION_CREATE;
+							$entry_id = null;
+						}
+
+						$fields = $this->getPostData( $handle, $position, $fields );
 
 						$entries[$position] = $this->sectionsPrepareEntry( $position, $fields, $entry_id, $section_id, $action );
 					}
@@ -541,13 +536,14 @@
 					 * Pre commit of entry.
 					 *
 					 * @delegate SectionsEvent_EntryPreCommit
+					 *
 					 * @param string $context
 					 * '*'
-					 * @param int $section_id
-					 * @param Entry $entry
-					 * @param array $fields
+					 * @param int    $section_id
+					 * @param Entry  $entry
+					 * @param array  $fields
 					 */
-					Symphony::ExtensionManager()->notifyMembers('SectionsEvent_EntryPreCommit', '*', array('section_id' => $section['id'], 'entry' => &$entry['entry'], 'fields' => &$entry['fields']));
+					Symphony::ExtensionManager()->notifyMembers( 'SectionsEvent_EntryPreCommit', '*', array('section_id' => $section['id'], 'entry' => &$entry['entry'], 'fields' => &$entry['fields']) );
 
 					if( __ENTRY_OK__ != $entry['entry']->setDataFromPost( $entry['fields'], $errors, false, ($entry['entry']->get( 'id' ) ? true : false) ) ){
 						$this->errors['set'] = true;
@@ -560,13 +556,14 @@
 					 * Post commit of entry.
 					 *
 					 * @delegate SectionsEvent_EntryPostCommit
+					 *
 					 * @param string $context
 					 * '*'
-					 * @param int $section_id
-					 * @param Entry $entry
-					 * @param array $fields
+					 * @param int    $section_id
+					 * @param Entry  $entry
+					 * @param array  $fields
 					 */
-					Symphony::ExtensionManager()->notifyMembers('SectionsEvent_EntryPostCommit', '*', array('section_id' => $section['id'], 'entry' => $entry['entry'], 'fields' => $entry['fields']));
+					Symphony::ExtensionManager()->notifyMembers( 'SectionsEvent_EntryPostCommit', '*', array('section_id' => $section['id'], 'entry' => $entry['entry'], 'fields' => $entry['fields']) );
 				}
 			}
 
@@ -591,6 +588,8 @@
 					$old_fields = $entry['fields'];
 
 					foreach($entry['fields'] as $field => $value){
+						if( isset($value['__type']) && $value['__type'] === 'upload' ) continue;
+
 						$new_value = $this->sectionsReplaceGetNewValue( $value );
 
 						if( $new_value !== $value ){
@@ -909,6 +908,67 @@
 			}
 
 			return $result;
+		}
+
+		/**
+		 * Similar to @see General::getPostData(), but adapted to given structure.
+		 *
+		 * @param $handle   - section handle
+		 * @param $position - entry position
+		 * @param $fields   - entry fields
+		 */
+		private function getPostData($handle, $position, $fields){
+			if( !function_exists( 'merge_file_post_data' ) ){
+				function merge_file_post_data($type, array $file, &$fields){
+					foreach($file as $key => $value){
+						if( !isset($fields[$key]) ) $fields[$key] = array();
+						if( is_array( $value ) ) {
+							merge_file_post_data( $type, $value, $fields[$key] );
+						}
+						else $fields[$key][$type] = $value;
+					}
+				}
+			}
+
+			$files = array(
+				'name' => array(),
+				'type' => array(),
+				'tmp_name' => array(),
+				'error' => array(),
+				'size' => array()
+			);
+
+			if( is_array( $_FILES['sections'] ) && !empty($_FILES['sections']) ){
+				foreach($_FILES['sections'] as $key_a => $data_a){
+					if( !is_array( $data_a ) ) continue;
+
+					reset($data_a[$handle]);
+
+					// indexed entries
+					if( is_numeric($data_a[$handle]) ){
+						$data_c = $data_a[$handle][$position];
+					}
+					// non-indexed entries
+					else{
+						$data_c = $data_a[$handle];
+					}
+
+					foreach($data_c as $key_b => $data_b){
+						$files[$key_a][$key_b] = $data_b;
+					}
+				}
+			}
+
+			foreach($files as $type => $data){
+				merge_file_post_data( $type, $data, $fields );
+			}
+
+			foreach($fields as &$data){
+				$data['__type'] = 'upload';
+			}
+
+
+			return $fields;
 		}
 
 	}
