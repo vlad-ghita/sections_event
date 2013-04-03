@@ -406,9 +406,12 @@ A `News` article with `Title` and `Publish date`. `Publish date` is hidden and w
             <xsl:with-param name="postback-value-enabled" select="false()"/>
         </xsl:call-template>
 
-		<!-- The redirect will benefit from the replacements as well -->
-		<input type="hidden" name="sections[__redirect]" value="{/data/params/root}/news/%{$section}[system:id]%"/>
 
+	<!-- The redirect will benefit from the replacements as well -->
+	<input type="hidden" name="sections[__redirect]" value="{/data/params/root}/news/%{$section}[system:id]%"/>
+
+
+	<!-- The send button enables the event -->
         <button type="submit" name="action[sections]">Send</button>
     </form>
 
