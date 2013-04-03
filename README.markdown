@@ -345,7 +345,7 @@ A `News` article with `Title` and `Publish date`. `Publish date` is hidden and w
         </xsl:call-template>
 
 
-        <!-- Pseudo Date - This field does not exist. I use it just as a variable for Publish date field (see below) -->
+        <!-- Pseudo Date - This field does not exist. I use it just as a variable for "Publish date" field (see below) -->
         <xsl:call-template name="sform:label">
             <xsl:with-param name="section" select="$section"/>
             <xsl:with-param name="handle" select="'pseudo-date'"/>
@@ -363,7 +363,8 @@ A `News` article with `Title` and `Publish date`. `Publish date` is hidden and w
             </xsl:with-param>
         </xsl:call-template>
 
-        <!-- Pseudo Time - This field does not exist. I use it just as a variable for Publish date field (see below) -->
+
+        <!-- Pseudo Time - This field does not exist. I use it just as a variable for "Publish date" field (see below) -->
         <xsl:call-template name="sform:label">
             <xsl:with-param name="section" select="$section"/>
             <xsl:with-param name="handle" select="'pseudo-time'"/>
@@ -381,7 +382,8 @@ A `News` article with `Title` and `Publish date`. `Publish date` is hidden and w
             </xsl:with-param>
         </xsl:call-template>
 
-        <!-- Publish date : Date/time field - It's value will be composed from "Pseudo date" and "Pseudo time" -->
+
+        <!-- Publish date : Date/time field - Its value will be composed from "Pseudo date" and "Pseudo time" -->
         <xsl:call-template name="sform:input">
             <xsl:with-param name="section" select="$section"/>
             <xsl:with-param name="handle" select="'publish-date'"/>
@@ -420,6 +422,6 @@ result:
         <label for="sections_news_pseudo-time">Time</label>
         <input type="text" placeholder="hh:mm" value="20:15" id="sections_news_pseudo-time" name="sections[news][pseudo-time]">
         <input type="hidden" value="%news[pseudo-date]%T%news[pseudo-time]%" id="sections_news_publish-date_start" name="sections[news][publish-date][start][]">
-        <input type="hidden" name="sections[__redirect]" value="http://www.example.com/news/%{$section}[system:id]%">
+        <input type="hidden" name="sections[__redirect]" value="http://www.example.com/news/%news[system:id]%">
         <button name="action[sections]" type="submit">Send</button>
     </form>
