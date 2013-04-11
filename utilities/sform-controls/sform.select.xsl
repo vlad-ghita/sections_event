@@ -462,32 +462,31 @@
 		</xsl:variable>
 
 		<xsl:variable name="result_options">
-			<xsl:for-each select="exsl:node-set($options)/option">
-				<xsl:variable name="option-value">
-					<xsl:choose>
-						<xsl:when test="@value">
-							<xsl:value-of select="@value"/>
-						</xsl:when>
-						<xsl:otherwise>
-							<xsl:value-of select="text()"/>
-						</xsl:otherwise>
-					</xsl:choose>
-				</xsl:variable>
+			<xsl:choose>
 
-				<option>
-					<xsl:if test="$current-value = $option-value">
-						<xsl:attribute name="selected">selected</xsl:attribute>
-					</xsl:if>
+				<!-- Optgroups -->
+				<xsl:when test="count(exsl:node-set($options)/optgroup) > 0">
+					<xsl:for-each select="exsl:node-set($options)/optgroup">
+						<xsl:copy>
+							<xsl:for-each select="@*">
+								<xsl:copy/>
+							</xsl:for-each>
 
-					<xsl:for-each select="@*">
-						<xsl:attribute name="{name()}">
-							<xsl:value-of select="normalize-space(.)"/>
-						</xsl:attribute>
+							<xsl:apply-templates select="option" mode="sform:select-base.option">
+								<xsl:with-param name="current-value" select="$current-value"/>
+							</xsl:apply-templates>
+						</xsl:copy>
 					</xsl:for-each>
+				</xsl:when>
 
-					<xsl:value-of select="text()"/>
-				</option>
-			</xsl:for-each>
+				<!-- Only options -->
+				<xsl:otherwise>
+					<xsl:apply-templates select="exsl:node-set($options)/option" mode="sform:select-base.option">
+						<xsl:with-param name="current-value" select="$current-value"/>
+					</xsl:apply-templates>
+				</xsl:otherwise>
+
+			</xsl:choose>
 		</xsl:variable>
 
 
@@ -496,6 +495,38 @@
 			<xsl:with-param name="attributes" select="$attrs"/>
 			<xsl:with-param name="value" select="$result_options"/>
 		</xsl:call-template>
+	</xsl:template>
+
+
+
+	<!-- Renders one select option -->
+	<xsl:template match="option" mode="sform:select-base.option">
+		<xsl:param name="current-value"/>
+
+		<xsl:variable name="option-value">
+			<xsl:choose>
+				<xsl:when test="@value">
+					<xsl:value-of select="@value"/>
+				</xsl:when>
+				<xsl:otherwise>
+					<xsl:value-of select="text()"/>
+				</xsl:otherwise>
+			</xsl:choose>
+		</xsl:variable>
+
+		<option>
+			<xsl:if test="$current-value = $option-value">
+				<xsl:attribute name="selected">selected</xsl:attribute>
+			</xsl:if>
+
+			<xsl:for-each select="@*">
+				<xsl:attribute name="{name()}">
+					<xsl:value-of select="normalize-space(.)"/>
+				</xsl:attribute>
+			</xsl:for-each>
+
+			<xsl:value-of select="text()"/>
+		</option>
 	</xsl:template>
 
 
