@@ -75,10 +75,6 @@
 			return false;
 		}
 
-		public function priority(){
-			return self::kLOW;
-		}
-
 		public static function getSource(){
 			return self::$source;
 		}
@@ -204,6 +200,11 @@
 				$processed_redirect = $this->sectionsReplaceGetNewValue( $redirect );
 				redirect( $processed_redirect );
 			}
+
+
+			// dump entry ids in param pool for reference
+			$this->dumpEntriesIDsInParamPool( $sections_commit );
+
 
 			return $this->buildOutput( $sections_commit );
 		}
@@ -588,8 +589,6 @@
 					$old_fields = $entry['fields'];
 
 					foreach($entry['fields'] as $field => $value){
-						if( isset($value['__type']) && $value['__type'] === 'upload' ) continue;
-
 						$new_value = $this->sectionsReplaceGetNewValue( $value );
 
 						if( $new_value !== $value ){
@@ -922,7 +921,7 @@
 				function merge_file_post_data($type, array $file, &$fields){
 					foreach($file as $key => $value){
 						if( !isset($fields[$key]) ) $fields[$key] = array();
-						if( is_array( $value ) ) {
+						if( is_array( $value ) ){
 							merge_file_post_data( $type, $value, $fields[$key] );
 						}
 						else $fields[$key][$type] = $value;
@@ -942,10 +941,10 @@
 				foreach($_FILES['sections'] as $key_a => $data_a){
 					if( !is_array( $data_a ) ) continue;
 
-					reset($data_a[$handle]);
+					reset( $data_a[$handle] );
 
 					// indexed entries
-					if( is_numeric(key($data_a[$handle])) ){
+					if( is_numeric( key( $data_a[$handle] ) ) ){
 						$data_c = $data_a[$handle][$position];
 					}
 					// non-indexed entries
@@ -963,12 +962,22 @@
 				merge_file_post_data( $type, $data, $fields );
 			}
 
-			foreach($fields as &$data){
-				$data['__type'] = 'upload';
-			}
-
-
 			return $fields;
+		}
+
+		/**
+		 * Dumps entries in param pool.
+		 *
+		 * @param $sections
+		 */
+		private function dumpEntriesIDsInParamPool($sections){
+			foreach($sections as $handle => $section){
+
+				foreach($section['entries'] as $entry){
+
+					Frontend::Page()->_param["event-sections-$handle"][] = $entry['entry']->get( 'id' );
+				}
+			}
 		}
 
 	}

@@ -408,7 +408,8 @@
 		<xsl:variable name="s">
 			<xsl:value-of select="$suffix"/>
 			<xsl:if test="$attribs/multiple = 'multiple'">
-				<xsl:text>/ </xsl:text>
+				<xsl:if test="$suffix != ''">/</xsl:if>
+				<xsl:text> </xsl:text>
 			</xsl:if>
 		</xsl:variable>
 
@@ -434,13 +435,29 @@
 		<xsl:variable name="current-value">
 			<xsl:choose>
 				<xsl:when test="$postback-value-enabled = true() and $entry-data">
-					<xsl:value-of select="$pb-value"/>
+					<xsl:copy-of select="exsl:node-set($pb-value)/* | exsl:node-set($pb-value)/text()"/>
 				</xsl:when>
 				<xsl:otherwise>
 					<xsl:value-of select="$initial-value"/>
 				</xsl:otherwise>
 			</xsl:choose>
 		</xsl:variable>
+
+		<!-- Put the value in a nodeset to cross match selected options -->
+		<xsl:variable name="norm-crt-value-ns">
+			<xsl:choose>
+			    <xsl:when test="$attribs/multiple = 'multiple'">
+			        <xsl:copy-of select="$current-value"/>
+			    </xsl:when>
+			    <xsl:otherwise>
+			        <item index="0">
+				        <xsl:value-of select="$current-value"/>
+			        </item>
+			    </xsl:otherwise>
+			</xsl:choose>
+		</xsl:variable>
+
+		<xsl:variable name="norm-crt-value" select="exsl:node-set($norm-crt-value-ns)/*"/>
 
 		<xsl:variable name="attrs">
 			<xsl:call-template name="sform:attributes-general">
@@ -461,7 +478,7 @@
 			<xsl:copy-of select="$attribs/*[ name() != 'id' and name() != 'name' and name() != 'class' ]"/>
 		</xsl:variable>
 
-		<xsl:variable name="result_options">
+		<xsl:variable name="computed_options">
 			<xsl:choose>
 
 				<!-- Optgroups -->
@@ -473,7 +490,7 @@
 							</xsl:for-each>
 
 							<xsl:apply-templates select="option" mode="sform:select-base.option">
-								<xsl:with-param name="current-value" select="$current-value"/>
+								<xsl:with-param name="current-value" select="$norm-crt-value"/>
 							</xsl:apply-templates>
 						</xsl:copy>
 					</xsl:for-each>
@@ -482,7 +499,7 @@
 				<!-- Only options -->
 				<xsl:otherwise>
 					<xsl:apply-templates select="exsl:node-set($options)/option" mode="sform:select-base.option">
-						<xsl:with-param name="current-value" select="$current-value"/>
+						<xsl:with-param name="current-value" select="$norm-crt-value"/>
 					</xsl:apply-templates>
 				</xsl:otherwise>
 
@@ -493,7 +510,7 @@
 		<xsl:call-template name="sform:render">
 			<xsl:with-param name="element" select="'select'"/>
 			<xsl:with-param name="attributes" select="$attrs"/>
-			<xsl:with-param name="value" select="$result_options"/>
+			<xsl:with-param name="value" select="$computed_options"/>
 		</xsl:call-template>
 	</xsl:template>
 

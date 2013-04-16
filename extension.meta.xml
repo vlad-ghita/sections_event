@@ -22,6 +22,11 @@
 	</authors>
 
 	<releases>
+		<release version="1.4.2" date="2013-04-14" min="2.3"><![CDATA[
+			* PHP: Add IDs of processed entries to param pool.
+			* XSLT: Fixed postback value for sform:select.
+		]]></release>
+
 		<release version="1.4.1" date="2013-04-11" min="2.3"><![CDATA[
 			* XSLT: Added optgroup support to sform:select.
 		]]></release>
