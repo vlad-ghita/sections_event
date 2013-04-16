@@ -975,7 +975,9 @@
 
 				foreach($section['entries'] as $entry){
 
-					Frontend::Page()->_param["event-sections-$handle"][] = $entry['entry']->get( 'id' );
+					if( $entry['entry'] instanceof Entry ){
+						Frontend::Page()->_param["event-sections-$handle"][] = $entry['entry']->get( 'id' );
+					}
 				}
 			}
 		}
