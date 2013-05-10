@@ -33,6 +33,52 @@ Installation as usual.
 
 
 
+## Using filters
+
+The event allows the usage of filters via the `__filters` key for every section.
+
+if you have a contact form and want to send an email with Email Template Manger when the message entry is created, you can set the filter in Frontend like this:
+
+    <input name="sections[contact-messages][__filters][]" type="hidden" value="xss"/>
+    <input name="sections[contact-messages][__filters][]" type="hidden" value="etm-new-contact-message"/>
+
+**But you are vulnerable to DOM hijack.**
+
+So I recommend using a custom event which simply sets the filter values in PHP:
+
+    <?php
+
+        require_once(TOOLKIT . '/class.event.php');
+
+        Final Class EventSend_Message_Notification extends Event{
+
+            public static function about(){
+                return array(
+                    'name' => 'Send message notification'
+                );
+            }
+
+            public static function allowEditorToParse(){
+                return false;
+            }
+
+            public function priority(){
+                return self::kHIGH;
+            }
+
+            public function load(){
+                if( !isset($_REQUEST['action']['sections']) ) return;
+
+                $_REQUEST['sections']['contact-messages']['__filters'] = array(
+                    'etm-new-message',
+                    'xss-fail'
+                );
+            }
+        }
+
+This event has the priority `kHIGH` so it will trigger before `Sections Event` which has priority `kNORMAL`.
+
+
 ## `Section Form Controls` utilities
 
 These utilities were inspired by @nick-dunn's Form Controls and exist to help with form creation and validation. 
