@@ -106,20 +106,20 @@
 		 * @return XMLElement
 		 */
 		public function execute(){
-			$sections_post = $_REQUEST['sections'];
+			$sections_input = $this->getInputData();
 
 			// store the redirect
 			$redirect = '';
-			if( isset($sections_post['__redirect']) ){
-				$redirect = $sections_post['__redirect'];
-				unset($sections_post['__redirect']);
+			if( isset($sections_input['__redirect']) ){
+				$redirect = $sections_input['__redirect'];
+				unset($sections_input['__redirect']);
 			}
 
 			// allow exclusion of sections, even if form data exists
 			$excluded = array();
-			if( isset($sections_post['__excluded']) ){
-				$excluded = $sections_post['__excluded'];
-				unset($sections_post['__excluded']);
+			if( isset($sections_input['__excluded']) ){
+				$excluded = $sections_input['__excluded'];
+				unset($sections_input['__excluded']);
 			}
 
 			if( !is_array( $excluded ) ){
@@ -127,18 +127,18 @@
 			}
 
 			foreach($excluded as $handle){
-				if( array_key_exists( $handle, $sections_post ) ){
-					unset($sections_post[$handle]);
+				if( array_key_exists( $handle, $sections_input ) ){
+					unset($sections_input[$handle]);
 				}
 			}
 
-			if( empty($sections_post) ) return null;
+			if( empty($sections_input) ) return null;
 
-			$this->crt_sections = $sections_post;
+			$this->crt_sections = $sections_input;
 
 
 			/* 1. Prepare data for processing. Fire PreSaveFilters delegate */
-			$sections_prepare = $this->sectionsPrepare( $sections_post );
+			$sections_prepare = $this->sectionsPrepare( $sections_input );
 
 			if( $this->errorsExist() ){
 				return $this->buildOutput( $sections_prepare );
@@ -227,7 +227,6 @@
 			$output = array();
 
 			foreach($input as $handle => $data){
-				$done = false;
 				$filters = array();
 				$entries = array();
 				$result = new XMLElement($handle);
@@ -237,7 +236,7 @@
 
 				if( $handle == '__fields' ){
 					$done = true;
-					$entry_data = $this->sectionsPrepareEntry( 0, $data, null );
+					$entry_data = $this->sectionsPrepareEntry( 0, $data );
 					$entries[0] = $entry_data;
 
 					$output[$handle] = array(
@@ -269,73 +268,65 @@
 
 				// set filters if they exist
 				if( isset($data['__filters']) ){
-					$filters = $data['__filters'];
+					$filters = is_array( $data['__filters'] ) ? $data['__filters'] : array($data['__filters']);
 					unset($data['__filters']);
 				}
 
 				// find edit IDs
 				$__edit = array();
 				if( isset($data['__edit']) ){
-					$__edit = $data['__edit'];
+					$__edit = is_array( $data['__edit'] ) ? $data['__edit'] : array($data['__edit']);
 					unset($data['__edit']);
 				}
 
 				// find delete IDs
 				$__delete = array();
 				if( isset($data['__delete']) ){
-					$__delete = $data['__delete'];
+					$__delete = is_array( $data['__delete'] ) ? $data['__delete'] : array($data['__delete']);
 					unset($data['__delete']);
 				}
 
 				// set current context
 				$this->setCurrentContext( $section_id, $filters );
 
-				// handle the case where $data contains only one un-indexed entry
-				reset( $data );
-				if( !is_numeric( key( $data ) ) ){
-					$data = array($data);
+				// prepare entries that must be created or edited
+				if( !empty($data) && is_array( $data ) ){
 
-					if( !is_array( $__edit ) ){
-						$__edit = array($__edit);
+					// handle the case where $data contains only one un-indexed entry
+					reset( $data );
+					if( !is_numeric( key( $data ) ) ){
+						$data = array($data);
 					}
 
-					if( !is_array( $__delete ) ){
-						$__delete = array($__delete);
-					}
-				}
-
-				if( is_array( $data ) and !empty($data) ){
 					foreach($data as $position => $fields){
 						$id_edit = isset($__edit[$position]) ? $__edit[$position] : null;
-						$id_delete = isset($__delete[$position]) ? $__delete[$position] : null;
 
-						if( is_numeric( $id_delete ) ){
-							$action = self::ACTION_DELETE;
-							$entry_id = $id_delete;
-						}
-						elseif( is_numeric( $id_edit ) ){
+						if( is_numeric( $id_edit ) ){
 							$action = self::ACTION_EDIT;
 							$entry_id = $id_edit;
+
+							// skip entries marked for deletion
+							if( in_array( $entry_id, $__delete ) ) continue;
 						}
 						else{
 							$action = self::ACTION_CREATE;
 							$entry_id = null;
 						}
 
-						$fields = $this->getPostData( $handle, $position, $fields );
+//						$fields = $this->getPostData( $handle, $position, $fields );
 
 						$entries[$position] = $this->sectionsPrepareEntry( $position, $fields, $entry_id, $section_id, $action );
 					}
 				}
 
-				// no fields submitted. Don't process section.
-				else{
-					$done = true;
+				// prepare entries that must be deleted
+				foreach($__delete as $position => $entry_id){
+					$entries[$position] = $this->sectionsPrepareEntry( $position, array(), $entry_id, $section_id, self::ACTION_DELETE );
 				}
 
 				$output[$handle] = array(
 					'id' => $section_id,
-					'done' => $done,
+					'done' => empty($entries),
 					'filters' => $filters,
 					'entries' => $entries,
 					'result' => $result
@@ -356,12 +347,9 @@
 		 *
 		 * @return array
 		 */
-		private function sectionsPrepareEntry($position, $fields, $entry_id, $section_id = null, $action = null){
-			$action = $action === null ? self::ACTION_NONE : $action;
-
+		private function sectionsPrepareEntry($position, $fields, $entry_id = null, $section_id = null, $action = self::ACTION_NONE){
 			$result = new XMLElement('entry', null, array('position' => $position, 'action' => $this->actions[$action]));
 			$done = false;
-			$e = null;
 
 			switch( $action ){
 
@@ -384,6 +372,7 @@
 					}
 					break;
 
+				case self::ACTION_NONE:
 				default:
 					$e = null;
 					break;
@@ -423,7 +412,8 @@
 		 */
 		private function sectionsDelete($input){
 			$output = $input;
-//			$to_delete = array();
+
+//			include_once(TOOLKIT.'/class.entrymanager.php');
 //
 //			foreach($output as $handle => &$section){
 //
@@ -433,20 +423,15 @@
 //						$id = $entry['entry']->get( 'id' );
 //
 //						if( is_numeric( $id ) ){
-//							$entry['done'] = true;
-//							$to_delete[] = $id;
+//							try{
+//								EntryManager::delete( $id );
+//								$entry['done'] = true;
+//							} catch( Exception $e ){
+//								$this->errors['delete'] = true;
+//								$entry['result'] = $this->_appendErrors( $entry['result'], $entry['fields'], array() );
+//							}
 //						}
 //					}
-//				}
-//			}
-//
-//			if( !empty($to_delete) ){
-//				include_once(TOOLKIT.'/class.entrymanager.php');
-//
-//				try{
-//					EntryManager::delete( $to_delete );
-//				} catch( Exception $e ){
-//					$this->errors['delete'] = true;
 //				}
 //			}
 
@@ -533,38 +518,12 @@
 
 					$errors = array();
 
-					/**
-					 * Pre commit of entry.
-					 *
-					 * @delegate SectionsEvent_EntryPreCommit
-					 *
-					 * @param string $context
-					 * '*'
-					 * @param int    $section_id
-					 * @param Entry  $entry
-					 * @param array  $fields
-					 */
-					Symphony::ExtensionManager()->notifyMembers( 'SectionsEvent_EntryPreCommit', '*', array('section_id' => $section['id'], 'entry' => &$entry['entry'], 'fields' => &$entry['fields']) );
-
 					if( __ENTRY_OK__ != $entry['entry']->setDataFromPost( $entry['fields'], $errors, false, ($entry['entry']->get( 'id' ) ? true : false) ) ){
 						$this->errors['set'] = true;
 						$entry['done'] = true;
 						$entry['result'] = self::appendErrors( $entry['result'], $entry['fields'], $errors );
 						continue;
 					}
-
-					/**
-					 * Post commit of entry.
-					 *
-					 * @delegate SectionsEvent_EntryPostCommit
-					 *
-					 * @param string $context
-					 * '*'
-					 * @param int    $section_id
-					 * @param Entry  $entry
-					 * @param array  $fields
-					 */
-					Symphony::ExtensionManager()->notifyMembers( 'SectionsEvent_EntryPostCommit', '*', array('section_id' => $section['id'], 'entry' => $entry['entry'], 'fields' => $entry['fields']) );
 				}
 			}
 
@@ -589,6 +548,10 @@
 					$old_fields = $entry['fields'];
 
 					foreach($entry['fields'] as $field => $value){
+
+						// skip fields of type upload
+						if( $this->isFiledForUpload( $handle, $field ) ) continue;
+
 						$new_value = $this->sectionsReplaceGetNewValue( $value );
 
 						if( $new_value !== $value ){
@@ -717,6 +680,19 @@
 
 				foreach($section['entries'] as &$entry){
 
+					/**
+					 * Pre commit of entry.
+					 *
+					 * @delegate SectionsEvent_EntryPreCommit
+					 *
+					 * @param string $context
+					 * '*'
+					 * @param int    $section_id
+					 * @param Entry  $entry
+					 * @param array  $fields
+					 */
+					Symphony::ExtensionManager()->notifyMembers( 'SectionsEvent_EntryPreCommit', '*', array('section_id' => $section['id'], 'entry' => &$entry['entry'], 'fields' => &$entry['fields']) );
+
 					// try to commit to database
 					if( $entry['entry']->commit() === false ){
 						$entry['done'] = true;
@@ -731,7 +707,20 @@
 						continue;
 					}
 
-					// Entry was created, add the good news to the return `$result`
+					/**
+					 * Post commit of entry.
+					 *
+					 * @delegate SectionsEvent_EntryPostCommit
+					 *
+					 * @param string $context
+					 * '*'
+					 * @param int    $section_id
+					 * @param Entry  $entry
+					 * @param array  $fields
+					 */
+					Symphony::ExtensionManager()->notifyMembers( 'SectionsEvent_EntryPostCommit', '*', array('section_id' => $section['id'], 'entry' => $entry['entry'], 'fields' => $entry['fields']) );
+
+					// Entry was managed, add the good news to $result
 					$entry['done'] = true;
 
 					switch( $entry['action'] ){
@@ -750,6 +739,7 @@
 							$message = __( 'Entry deleted successfully.' );
 							break;
 
+						case self::ACTION_NONE:
 						default:
 							$type = '';
 							$message = '';
@@ -910,21 +900,17 @@
 		}
 
 		/**
-		 * Similar to @see General::getPostData(), but adapted to given structure.
-		 *
-		 * @param $handle   - section handle
-		 * @param $position - entry position
-		 * @param $fields   - entry fields
+		 * Similar to @see General::getPostData(), but uses $_REQUEST instead of POST
 		 */
-		private function getPostData($handle, $position, $fields){
+		private function getInputData(){
 			if( !function_exists( 'merge_file_post_data' ) ){
-				function merge_file_post_data($type, array $file, &$fields){
+				function merge_file_post_data($type, array $file, &$post){
 					foreach($file as $key => $value){
-						if( !isset($fields[$key]) ) $fields[$key] = array();
-						if( is_array( $value ) ){
-							merge_file_post_data( $type, $value, $fields[$key] );
+						if( !isset($post[$key]) ) $post[$key] = array();
+						if( is_array( $value ) ) {
+							merge_file_post_data( $type, $value, $post[$key] );
 						}
-						else $fields[$key][$type] = $value;
+						else $post[$key][$type] = $value;
 					}
 				}
 			}
@@ -936,33 +922,45 @@
 				'error' => array(),
 				'size' => array()
 			);
+			$post = $_REQUEST;
 
-			if( is_array( $_FILES['sections'] ) && !empty($_FILES['sections']) ){
-				foreach($_FILES['sections'] as $key_a => $data_a){
+			if( is_array( $_FILES ) && !empty($_FILES) ){
+				foreach($_FILES as $key_a => $data_a){
 					if( !is_array( $data_a ) ) continue;
-
-					reset( $data_a[$handle] );
-
-					// indexed entries
-					if( is_numeric( key( $data_a[$handle] ) ) ){
-						$data_c = $data_a[$handle][$position];
-					}
-					// non-indexed entries
-					else{
-						$data_c = $data_a[$handle];
-					}
-
-					foreach($data_c as $key_b => $data_b){
-						$files[$key_a][$key_b] = $data_b;
+					foreach($data_a as $key_b => $data_b){
+						$files[$key_b][$key_a] = $data_b;
 					}
 				}
 			}
 
 			foreach($files as $type => $data){
-				merge_file_post_data( $type, $data, $fields );
+				merge_file_post_data( $type, $data, $post );
 			}
 
-			return $fields;
+			return $post['sections'];
+		}
+
+		/**
+		 * Checks to see if given field is for uploading files
+		 * by looking and $_FILES array
+		 *
+		 * @param $section - handle
+		 * @param $field   - handle
+		 *
+		 * @return bool - true or false
+		 */
+		private function isFiledForUpload($section, $field){
+			if( !isset($_FILES['sections']['name'][$section]) ) return false;
+
+			$data = $_FILES['sections']['name'][$section];
+
+			// takes care of the case when numeric entries are comming through
+			reset($data);
+			if( is_numeric( key( $data ) ) ){
+				$data = current($data);
+			}
+
+			return array_key_exists($field, $data);
 		}
 
 		/**

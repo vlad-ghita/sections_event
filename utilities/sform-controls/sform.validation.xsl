@@ -173,6 +173,8 @@
 		<xsl:param name="error-class" select="'error'"/>
 
 		<xsl:param name="main-wrapper" select="'div'"/>
+		<xsl:param name="main-wrapper-success-class" select="'success'"/>
+		<xsl:param name="main-wrapper-error-class" select="'error'"/>
 
 
 		<!-- Overload values for HTML wrappers -->
@@ -241,10 +243,10 @@
 							<xsl:text>validation </xsl:text>
 							<xsl:choose>
 								<xsl:when test="$do-items-with-errors-exist != ''">
-									<xsl:value-of select="$error-class"/>
+									<xsl:value-of select="$main-wrapper-error-class"/>
 								</xsl:when>
 								<xsl:otherwise>
-									<xsl:value-of select="$success-class"/>
+									<xsl:value-of select="$main-wrapper-success-class"/>
 								</xsl:otherwise>
 							</xsl:choose>
 						</xsl:attribute>
@@ -316,7 +318,7 @@
 			</xsl:if>
 
 			<msg>
-				<xsl:apply-templates select="exsl:node-set($msg)" mode="sform:html"/>
+				<xsl:copy-of select="exsl:node-set($msg)/* | exsl:node-set($msg)/text()"/>
 			</msg>
 		</item>
 	</xsl:template>

@@ -43,7 +43,7 @@
 	<xsl:variable name="sform:events" select="/data/events"/>
 
 	<!-- Class for invalid form controls -->
-	<xsl:variable name="sform:invalid-class" select="'error'"/>
+	<xsl:variable name="sform:invalid-class" select="'invalid'"/>
 
 
 
