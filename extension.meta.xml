@@ -1,73 +1,521 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<extension id="sections_event" status="released" xmlns="http://symphony-cms.com/schemas/extension/1.0">
+<xsl:stylesheet version="1.0"
+		xmlns:xsl="http://www.w3.org/1999/XSL/Transform"
+		xmlns:exsl="http://exslt.org/common"
+		xmlns:fl="http://symphony-cms.com/functions"
+		xmlns:sform="http://xanderadvertising.com/xslt"
+		xmlns:string="http://symphony-cms.com/functions"
+		xmlns:utils="http://exslt.org/utils"
+		xmlns:xcms="http://xanderadvertising.com/functions"
+		extension-element-prefixes="exsl fl sform string utils xcms">
 
-	<name>Sections event</name>
 
-	<description>Offers one event to rule all Sections.</description>
 
-	<repo type="github">https://github.com/vlad-ghita/sections_event</repo>
 
-	<url type="discuss">http://getsymphony.com/discuss/thread/96491/</url>
+	<xsl:import href="../views_main/template_master.xsl"/>
 
-	<types>
-		<type>Event</type>
-	</types>
+	<xsl:import href="../utilities/sform-controls/sform-controls.xsl"/>
+	<xsl:import href="../utilities/utils_schema.xsl"/>
 
-	<authors>
-		<author>
-			<name github="vlad-ghita" symphony="vladG">Vlad Ghita</name>
-			<email>vlad.github@gmail.com</email>
-			<website>http://www.xanderadvertising.com</website>
-		</author>
-	</authors>
 
-	<releases>
-		<release version="1.4.2" date="2013-04-14" min="2.3"><![CDATA[
-			* PHP: Add IDs of processed entries to param pool.
-			* XSLT: Fixed postback value for sform:select.
-		]]></release>
 
-		<release version="1.4.1" date="2013-04-11" min="2.3"><![CDATA[
-			* XSLT: Added optgroup support to sform:select.
-		]]></release>
 
-		<release version="1.4" date="2013-04-02" min="2.3"><![CDATA[
-			* PHP: File uploads now possible.
-			* XSLT: Fixed `$events` variable.
-			* Readme fixes.
-		]]></release>
+	<!-- Adders -->
+	<xsl:template name="add_head_meta-title">
+		<xsl:text>: </xsl:text>
+		<xsl:value-of select="$participant-details/first-name"/>
+		<xsl:text> </xsl:text>
+		<xsl:value-of select="$participant-details/last-name"/>
+	</xsl:template>
 
-		<release version="1.3" date="2013-03-26" min="2.3"><![CDATA[
-			* PHP: Redirect value benefits from replacements.
-			* XSLT: Various fixes in sform utilities.
-			* Readme fixes.
-		]]></release>
 
-		<release version="1.2.1" date="2013-01-29" min="2.3"><![CDATA[
-			* Field's interpretation now includes all orfan XML nodes from Entry data.
-			* Readme fixes.
-		]]></release>
+	<xsl:template name="add_head_styles">
+		<link href="{$theme_path}/styles/jquery.select2.css" rel="stylesheet" type="text/css"/>
+		<link href="{$theme_path}/styles/jquery.ui.datepicker.css" rel="stylesheet" type="text/css"/>
+		<link href="{$theme_path}/styles/form.css" rel="stylesheet" type="text/css"/>
+		<link href="{$theme_path}/styles/p_participants-area_personal-info.css" rel="stylesheet" type="text/css"/>
+	</xsl:template>
 
-		<release version="1.2" date="2013-01-29" min="2.3"><![CDATA[
-			* Fixed some validation bugs for sform-controls.
-		]]></release>
 
-		<release version="1.1" date="2013-01-26" min="2.3"><![CDATA[
-			* Variable replacement in posted field's data now extended to any field, not only `system:id`.
-			* Reworked Identification parameteres for sform-controls.
-			* Event now passed as a string handle instead of XML node-set.
-			* Control ID identification parts are now separated by `_` instead of `-`.
-			* Reworked validation for sform-controls. It now allows individual control validation.
-			* Added a new template for helping the build of a replaceable variable.
-		]]></release>
+	<xsl:template name="add_scripts_libraries">
+		<script type="text/javascript" src="{$theme_path}/libraries/jquery.select2.min.js"></script>
 
-		<release version="1.0.1" date="2013-01-17" min="2.3"><![CDATA[
-			* Various Form controls fixes.
-		]]></release>
+		<script type="text/javascript" src="{$xandercms_path}/libraries/jquery.validate.js"></script>
+		<script type="text/javascript" src="{$xandercms_path}/libraries/jquery.validate_methods.js"></script>
 
-		<release version="1.0.1" date="2013-01-16" min="2.3"><![CDATA[
-			* First release.
-		]]></release>
-	</releases>
+		<script type="text/javascript" src="{$xandercms_path}/libraries/jquery.ui.core.js"></script>
+		<script type="text/javascript" src="{$xandercms_path}/libraries/jquery.ui.datepicker.js"></script>
 
-</extension>
+		<script type="text/javascript" src="{$theme_path}/libraries/p_participants-area_personal-info.js"></script>
+	</xsl:template>
+
+
+
+
+	<!-- Override default layout -->
+	<xsl:template name="body_main">
+		<div class="row">
+			<div class="span4">
+				<xsl:call-template name="w_personal-info"/>
+			</div>
+			<div class="span4">
+				<xsl:call-template name="w_account-info"/>
+			</div>
+		</div>
+	</xsl:template>
+
+
+
+
+	<!-- Personal info-->
+	<xsl:template name="w_personal-info">
+		<xsl:variable name="participants_handle" select="'participants'"/>
+		<xsl:variable name="participants_id" select="52"/>
+
+		<xsl:variable name="participants_formi-ns">
+			<xsl:call-template name="sform:validation-interpret">
+				<xsl:with-param name="section" select="$participants_handle"/>
+				<xsl:with-param name="entry-messages">
+					<xsl:call-template name="sform:validation-tpl-msg">
+						<xsl:with-param name="status" select="$sform:STATUS_SUCCESS"/>
+						<xsl:with-param name="msg" select="fl:__('p_participants-area_personal-info/personal-info/msg-success')"/>
+					</xsl:call-template>
+					<xsl:call-template name="sform:validation-tpl-msg">
+						<xsl:with-param name="status" select="$sform:STATUS_ERROR"/>
+						<xsl:with-param name="msg" select="fl:__('p_participants-area_personal-info/personal-info/msg-error')"/>
+					</xsl:call-template>
+				</xsl:with-param>
+			</xsl:call-template>
+		</xsl:variable>
+
+		<xsl:variable name="participants_formi" select="exsl:node-set($participants_formi-ns)"/>
+
+
+		<div id="personal-info" class="personal-info">
+			<h1>
+				<xsl:value-of select="fl:__('p_participants-area_personal-info/personal-info/title')"/>
+			</h1>
+
+			<xsl:call-template name="sform:validation-render">
+				<xsl:with-param name="interpretation" select="$participants_formi"/>
+				<xsl:with-param name="main-wrapper-success-class" select="'alert alert-success'"/>
+				<xsl:with-param name="main-wrapper-error-class" select="'alert alert-error'"/>
+			</xsl:call-template>
+
+			<form action="#personal-info" method="post" enctype="multipart/form-data">
+				<input name="MAX_FILE_SIZE" type="hidden" value="20971520"/>
+
+
+				<!-- First name -->
+				<xsl:call-template name="sform:label">
+					<xsl:with-param name="section" select="$participants_handle"/>
+					<xsl:with-param name="handle" select="'first-name'"/>
+					<xsl:with-param name="interpretation" select="$participants_formi"/>
+					<xsl:with-param name="value" select="xcms:schemaFieldLabel('first-name',$participants_id)"/>
+				</xsl:call-template>
+
+				<xsl:call-template name="sform:input">
+					<xsl:with-param name="section" select="$participants_handle"/>
+					<xsl:with-param name="handle" select="'first-name'"/>
+					<xsl:with-param name="interpretation" select="$participants_formi"/>
+					<xsl:with-param name="value" select="$participant-details/first-name"/>
+					<xsl:with-param name="attributes">
+						<class>span4 required</class>
+					</xsl:with-param>
+				</xsl:call-template>
+
+
+				<!-- Last name -->
+				<xsl:call-template name="sform:label">
+					<xsl:with-param name="section" select="$participants_handle"/>
+					<xsl:with-param name="handle" select="'last-name'"/>
+					<xsl:with-param name="interpretation" select="$participants_formi"/>
+					<xsl:with-param name="value" select="xcms:schemaFieldLabel('last-name',$participants_id)"/>
+				</xsl:call-template>
+
+				<xsl:call-template name="sform:input">
+					<xsl:with-param name="section" select="$participants_handle"/>
+					<xsl:with-param name="handle" select="'last-name'"/>
+					<xsl:with-param name="interpretation" select="$participants_formi"/>
+					<xsl:with-param name="value" select="$participant-details/last-name"/>
+					<xsl:with-param name="attributes">
+						<class>span4 required</class>
+					</xsl:with-param>
+				</xsl:call-template>
+
+
+				<!-- Avatar -->
+				<xsl:call-template name="sform:label">
+					<xsl:with-param name="section" select="$participants_handle"/>
+					<xsl:with-param name="handle" select="'avatar'"/>
+					<xsl:with-param name="interpretation" select="$participants_formi"/>
+					<xsl:with-param name="value" select="xcms:schemaFieldLabel('avatar',$participants_id)"/>
+				</xsl:call-template>
+
+				<xsl:if test="$participant-details/avatar/@size != ''">
+					<a href="{$params/workspace}{$participant-details/avatar/@path}/{$participant-details/avatar/filename}" target="_blank">
+						<img src="{$params/root}/image/1/75/0/{$participant-details/avatar/@path}/{$participant-details/avatar/filename}"/>
+					</a>
+				</xsl:if>
+
+				<xsl:call-template name="sform:input">
+					<xsl:with-param name="section" select="$participants_handle"/>
+					<xsl:with-param name="handle" select="'avatar'"/>
+					<xsl:with-param name="interpretation" select="$participants_formi"/>
+					<xsl:with-param name="attributes">
+						<class>span3</class>
+						<type>file</type>
+					</xsl:with-param>
+					<xsl:with-param name="postback-value-enabled" select="false()"/>
+				</xsl:call-template>
+
+
+				<!-- Phone -->
+				<xsl:call-template name="sform:label">
+					<xsl:with-param name="section" select="$participants_handle"/>
+					<xsl:with-param name="handle" select="'phone'"/>
+					<xsl:with-param name="interpretation" select="$participants_formi"/>
+					<xsl:with-param name="value" select="xcms:schemaFieldLabel('phone',$participants_id)"/>
+				</xsl:call-template>
+
+				<xsl:call-template name="sform:input">
+					<xsl:with-param name="section" select="$participants_handle"/>
+					<xsl:with-param name="handle" select="'phone'"/>
+					<xsl:with-param name="interpretation" select="$participants_formi"/>
+					<xsl:with-param name="value" select="$participant-details/phone"/>
+					<xsl:with-param name="attributes">
+						<class>span4 required</class>
+					</xsl:with-param>
+				</xsl:call-template>
+
+
+				<!-- Birth date -->
+				<xsl:call-template name="sform:label">
+					<xsl:with-param name="section" select="$participants_handle"/>
+					<xsl:with-param name="handle" select="'birth-date'"/>
+					<xsl:with-param name="suffix" select="'start/ '"/>
+					<xsl:with-param name="interpretation" select="$participants_formi"/>
+					<xsl:with-param name="value" select="xcms:schemaFieldLabel('birth-date',$participants_id)"/>
+				</xsl:call-template>
+
+				<xsl:call-template name="sform:input">
+					<xsl:with-param name="section" select="$participants_handle"/>
+					<xsl:with-param name="handle" select="'birth-date'"/>
+					<xsl:with-param name="suffix" select="'start/ '"/>
+					<xsl:with-param name="interpretation" select="$participants_formi"/>
+					<xsl:with-param name="value" select="$participant-details/birth-date"/>
+					<xsl:with-param name="attributes">
+						<class>span4 datepicker required</class>
+					</xsl:with-param>
+				</xsl:call-template>
+
+
+				<!-- Gender -->
+				<xsl:call-template name="sform:label">
+					<xsl:with-param name="section" select="$participants_handle"/>
+					<xsl:with-param name="handle" select="'gender'"/>
+					<xsl:with-param name="interpretation" select="$participants_formi"/>
+					<xsl:with-param name="value" select="xcms:schemaFieldLabel('gender',$participants_id)"/>
+				</xsl:call-template>
+
+				<xsl:for-each select="$data/gender-index/entry">
+					<xsl:variable name="id">
+						<xsl:call-template name="sform:control-id">
+							<xsl:with-param name="name">
+								<xsl:call-template name="sform:control-name">
+									<xsl:with-param name="section" select="$participants_handle"/>
+									<xsl:with-param name="handle" select="'gender'"/>
+									<xsl:with-param name="suffix" select="position()"/>
+								</xsl:call-template>
+							</xsl:with-param>
+						</xsl:call-template>
+					</xsl:variable>
+
+					<xsl:call-template name="sform:label">
+						<xsl:with-param name="section" select="$participants_handle"/>
+						<xsl:with-param name="handle" select="'gender'"/>
+						<xsl:with-param name="suffix" select="position()"/>
+						<xsl:with-param name="interpretation" select="$participants_formi"/>
+						<xsl:with-param name="value">
+
+							<xsl:call-template name="sform:radio">
+								<xsl:with-param name="section" select="$participants_handle"/>
+								<xsl:with-param name="handle" select="'gender'"/>
+								<xsl:with-param name="interpretation" select="$participants_formi"/>
+								<xsl:with-param name="value" select="@id"/>
+								<xsl:with-param name="attributes">
+									<id>
+										<xsl:value-of select="$id"/>
+									</id>
+									<xsl:if test="@id = $participant-details/gender/item/@id">
+										<checked>checked</checked>
+									</xsl:if>
+								</xsl:with-param>
+							</xsl:call-template>
+
+							<xsl:value-of select="title"/>
+
+						</xsl:with-param>
+						<xsl:with-param name="attributes">
+							<for>
+								<xsl:value-of select="$id"/>
+							</for>
+							<class>radio inline</class>
+						</xsl:with-param>
+					</xsl:call-template>
+				</xsl:for-each>
+
+
+				<!-- Address -->
+				<xsl:call-template name="sform:label">
+					<xsl:with-param name="section" select="$participants_handle"/>
+					<xsl:with-param name="handle" select="'address'"/>
+					<xsl:with-param name="interpretation" select="$participants_formi"/>
+					<xsl:with-param name="value" select="xcms:schemaFieldLabel('address',$participants_id)"/>
+				</xsl:call-template>
+
+				<xsl:call-template name="sform:input">
+					<xsl:with-param name="section" select="$participants_handle"/>
+					<xsl:with-param name="handle" select="'address'"/>
+					<xsl:with-param name="interpretation" select="$participants_formi"/>
+					<xsl:with-param name="value" select="$participant-details/address"/>
+					<xsl:with-param name="attributes">
+						<class>span4</class>
+					</xsl:with-param>
+				</xsl:call-template>
+
+
+				<!-- Locality -->
+				<xsl:call-template name="sform:label">
+					<xsl:with-param name="section" select="$participants_handle"/>
+					<xsl:with-param name="handle" select="'locality'"/>
+					<xsl:with-param name="interpretation" select="$participants_formi"/>
+					<xsl:with-param name="value" select="xcms:schemaFieldLabel('locality',$participants_id)"/>
+				</xsl:call-template>
+
+				<xsl:call-template name="sform:input">
+					<xsl:with-param name="section" select="$participants_handle"/>
+					<xsl:with-param name="handle" select="'locality'"/>
+					<xsl:with-param name="interpretation" select="$participants_formi"/>
+					<xsl:with-param name="value" select="$participant-details/locality"/>
+					<xsl:with-param name="attributes">
+						<class>span4</class>
+					</xsl:with-param>
+				</xsl:call-template>
+
+
+				<!-- Country -->
+				<xsl:call-template name="sform:label">
+					<xsl:with-param name="section" select="$participants_handle"/>
+					<xsl:with-param name="handle" select="'country'"/>
+					<xsl:with-param name="interpretation" select="$participants_formi"/>
+					<xsl:with-param name="value" select="xcms:schemaFieldLabel('country',$participants_id)"/>
+				</xsl:call-template>
+
+				<xsl:call-template name="sform:select">
+					<xsl:with-param name="section" select="$participants_handle"/>
+					<xsl:with-param name="handle" select="'country'"/>
+					<xsl:with-param name="interpretation" select="$participants_formi"/>
+					<xsl:with-param name="value" select="$participant-details/country/item/@id"/>
+					<xsl:with-param name="options">
+						<xsl:for-each select="$data/index-countries/entry">
+							<option value="{@id}">
+								<xsl:value-of select="title"/>
+							</option>
+						</xsl:for-each>
+					</xsl:with-param>
+					<xsl:with-param name="attributes">
+						<class>span4 select2</class>
+					</xsl:with-param>
+				</xsl:call-template>
+
+
+				<!-- Occupation -->
+				<xsl:call-template name="sform:label">
+					<xsl:with-param name="section" select="$participants_handle"/>
+					<xsl:with-param name="handle" select="'occupation'"/>
+					<xsl:with-param name="interpretation" select="$participants_formi"/>
+					<xsl:with-param name="value" select="xcms:schemaFieldLabel('occupation',$participants_id)"/>
+				</xsl:call-template>
+
+				<xsl:call-template name="sform:input">
+					<xsl:with-param name="section" select="$participants_handle"/>
+					<xsl:with-param name="handle" select="'occupation'"/>
+					<xsl:with-param name="interpretation" select="$participants_formi"/>
+					<xsl:with-param name="value" select="$participant-details/occupation"/>
+					<xsl:with-param name="attributes">
+						<class>span4</class>
+					</xsl:with-param>
+				</xsl:call-template>
+
+
+				<!-- Company -->
+				<xsl:call-template name="sform:label">
+					<xsl:with-param name="section" select="$participants_handle"/>
+					<xsl:with-param name="handle" select="'company'"/>
+					<xsl:with-param name="interpretation" select="$participants_formi"/>
+					<xsl:with-param name="value" select="xcms:schemaFieldLabel('company',$participants_id)"/>
+				</xsl:call-template>
+
+				<xsl:call-template name="sform:input">
+					<xsl:with-param name="section" select="$participants_handle"/>
+					<xsl:with-param name="handle" select="'company'"/>
+					<xsl:with-param name="interpretation" select="$participants_formi"/>
+					<xsl:with-param name="value" select="$participant-details/company"/>
+					<xsl:with-param name="attributes">
+						<class>span4</class>
+					</xsl:with-param>
+				</xsl:call-template>
+
+
+				<!-- Sport club -->
+				<xsl:call-template name="sform:label">
+					<xsl:with-param name="section" select="$participants_handle"/>
+					<xsl:with-param name="handle" select="'sport-club'"/>
+					<xsl:with-param name="interpretation" select="$participants_formi"/>
+					<xsl:with-param name="value" select="xcms:schemaFieldLabel('sport-club',$participants_id)"/>
+				</xsl:call-template>
+
+				<xsl:call-template name="sform:input">
+					<xsl:with-param name="section" select="$participants_handle"/>
+					<xsl:with-param name="handle" select="'sport-club'"/>
+					<xsl:with-param name="interpretation" select="$participants_formi"/>
+					<xsl:with-param name="value" select="$participant-details/sport-club"/>
+					<xsl:with-param name="attributes">
+						<class>span4</class>
+					</xsl:with-param>
+				</xsl:call-template>
+
+
+				<button class="primary align-right" name="action[sections]" type="submit">
+					<xsl:value-of select="fl:__('p_participants-area_personal-info/personal-info/submit')"/>
+					<xsl:text> </xsl:text>
+					<i class="icon icon-arrow-right"/>
+				</button>
+			</form>
+		</div>
+	</xsl:template>
+
+
+
+
+	<!-- Account info -->
+	<xsl:template name="w_account-info">
+		<xsl:variable name="member-account" select="$data/members-acl-by-id/entry[ @id = $params/member-id ]"/>
+
+		<xsl:variable name="section_handle" select="'members-acl'"/>
+		<xsl:variable name="section_id" select="60"/>
+
+		<xsl:variable name="formi">
+			<xsl:call-template name="sform:validation-interpret">
+				<xsl:with-param name="section" select="$section_handle"/>
+				<xsl:with-param name="entry-messages">
+					<xsl:call-template name="sform:validation-tpl-msg">
+						<xsl:with-param name="status" select="$sform:STATUS_SUCCESS"/>
+						<xsl:with-param name="msg" select="fl:__('p_participants-area_personal-info/account-info/msg-success')"/>
+					</xsl:call-template>
+					<xsl:call-template name="sform:validation-tpl-msg">
+						<xsl:with-param name="status" select="$sform:STATUS_ERROR"/>
+						<xsl:with-param name="msg" select="fl:__('p_participants-area_personal-info/account-info/msg-error')"/>
+					</xsl:call-template>
+				</xsl:with-param>
+			</xsl:call-template>
+		</xsl:variable>
+
+
+		<div id="account-info">
+			<h1>
+				<xsl:value-of select="fl:__('p_participants-area_personal-info/account-info/title')"/>
+			</h1>
+
+			<xsl:call-template name="sform:validation-render">
+				<xsl:with-param name="interpretation" select="$formi"/>
+				<xsl:with-param name="main-wrapper-success-class" select="'alert alert-success'"/>
+				<xsl:with-param name="main-wrapper-error-class" select="'alert alert-error'"/>
+			</xsl:call-template>
+
+			<form action="#account-info" method="post">
+
+				<!-- Email -->
+				<xsl:call-template name="sform:label">
+					<xsl:with-param name="section" select="$section_handle"/>
+					<xsl:with-param name="handle" select="'email'"/>
+					<xsl:with-param name="interpretation" select="$formi"/>
+					<xsl:with-param name="value" select="xcms:schemaFieldLabel('email',$section_id)"/>
+				</xsl:call-template>
+
+				<xsl:call-template name="sform:input">
+					<xsl:with-param name="section" select="$section_handle"/>
+					<xsl:with-param name="handle" select="'email'"/>
+					<xsl:with-param name="interpretation" select="$formi"/>
+					<xsl:with-param name="value" select="$member-account/email"/>
+					<xsl:with-param name="attributes">
+						<class>span4 required email</class>
+					</xsl:with-param>
+				</xsl:call-template>
+
+
+				<!-- Password : Password -->
+				<xsl:call-template name="sform:label">
+					<xsl:with-param name="section" select="$section_handle"/>
+					<xsl:with-param name="handle" select="'password'"/>
+					<xsl:with-param name="suffix" select="'password'"/>
+					<xsl:with-param name="interpretation" select="$formi"/>
+					<xsl:with-param name="value" select="fl:__('p_participants-area_personal-info/account-info/pass-password')"/>
+				</xsl:call-template>
+
+				<xsl:call-template name="sform:input">
+					<xsl:with-param name="section" select="$section_handle"/>
+					<xsl:with-param name="handle" select="'password'"/>
+					<xsl:with-param name="suffix" select="'password'"/>
+					<xsl:with-param name="interpretation" select="$formi"/>
+					<xsl:with-param name="attributes">
+						<class>span4</class>
+						<type>password</type>
+					</xsl:with-param>
+					<xsl:with-param name="postback-value-enabled" select="false()"/>
+				</xsl:call-template>
+
+
+				<!-- Password : Confirm -->
+				<xsl:call-template name="sform:label">
+					<xsl:with-param name="section" select="$section_handle"/>
+					<xsl:with-param name="handle" select="'password'"/>
+					<xsl:with-param name="suffix" select="'confirm'"/>
+					<xsl:with-param name="interpretation" select="$formi"/>
+					<xsl:with-param name="value" select="fl:__('p_participants-area_personal-info/account-info/pass-confirm')"/>
+				</xsl:call-template>
+
+				<xsl:call-template name="sform:input">
+					<xsl:with-param name="section" select="$section_handle"/>
+					<xsl:with-param name="handle" select="'password'"/>
+					<xsl:with-param name="suffix" select="'confirm'"/>
+					<xsl:with-param name="interpretation" select="$formi"/>
+					<xsl:with-param name="attributes">
+						<class>span4</class>
+						<type>password</type>
+					</xsl:with-param>
+					<xsl:with-param name="postback-value-enabled" select="false()"/>
+				</xsl:call-template>
+
+
+				<span class="help-block">
+					<i class="icon icon-exclamation-sign"/>
+					<xsl:text> </xsl:text>
+					<xsl:value-of select="fl:__('p_participants-area_personal-info/account-info/pass-hint')"/>
+				</span>
+
+
+				<button class="btn btn-inverse align-right" name="action[sections]" type="submit">
+					<xsl:value-of select="fl:__('p_participants-area_personal-info/account-info/submit')"/>
+					<xsl:text> </xsl:text>
+					<i class="icon icon-arrow-right"/>
+				</button>
+			</form>
+		</div>
+	</xsl:template>
+
+
+
+
+</xsl:stylesheet>
