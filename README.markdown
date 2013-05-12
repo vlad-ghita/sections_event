@@ -271,11 +271,12 @@ result:
         <xsl:with-param name="value" select="'Encyclopedia'"/>
     </xsl:call-template>
 
-	<!-- Book #0 authors -->
+    <!-- Book #0 authors -->
     <xsl:call-template name="sform:input">
         <xsl:with-param name="section" select="'books'"/>
         <xsl:with-param name="position" select="0"/>
         <xsl:with-param name="handle" select="'authors'"/>
+        <xsl:with-param name="suffix" select="'0'"/>
         <xsl:with-param name="value">
             <!-- Link to author #1 -->
             <xsl:call-template name="sform:variable">
@@ -283,7 +284,18 @@ result:
                 <xsl:with-param name="position" select="0"/>
                 <xsl:with-param name="handle" select="'system:id'"/>
             </xsl:call-template>
-            <xsl:text>,</xsl:text>
+        </xsl:with-param>
+        <xsl:with-param name="attributes">
+            <type>hidden</type>
+        </xsl:with-param>
+    </xsl:call-template>
+    
+    
+    <xsl:call-template name="sform:input">
+        <xsl:with-param name="section" select="'books'"/>
+        <xsl:with-param name="position" select="0"/>
+        <xsl:with-param name="handle" select="'authors'"/>
+        <xsl:with-param name="suffix" select="'1'"/>
             <!-- Link to author #3 -->
             <xsl:call-template name="sform:variable">
                 <xsl:with-param name="section" select="'authors'"/>
@@ -304,11 +316,12 @@ result:
         <xsl:with-param name="value" select="'XSLT Cookbook'"/>
     </xsl:call-template>
 
-	<!-- Book #1 authors -->
+    <!-- Book #1 authors -->
     <xsl:call-template name="sform:input">
         <xsl:with-param name="section" select="'books'"/>
         <xsl:with-param name="position" select="1"/>
         <xsl:with-param name="handle" select="'authors'"/>
+        <xsl:with-param name="suffix" select="'0'"/>
         <xsl:with-param name="value">
             <!-- Link to author #2. If handle is omitted, it's assumed 'system:id' -->
             <xsl:call-template name="sform:variable">
@@ -327,9 +340,10 @@ result:
     <input type="text" value="Mary" id="sections_authors_1_name" name="sections[authors][1][name]">
     <input type="text" value="Andrew" id="sections_authors_2_name" name="sections[authors][2][name]">
     <input type="text" value="Encyclopedia" id="sections_books_0_title" name="sections[books][0][title]">
-    <input type="hidden" value="%authors[0][system:id]%,%authors[2][system:id]%" id="sections_books_0_authors" name="sections[books][0][authors]">
+    <input type="hidden" value="%authors[0][system:id]%" id="sections_books_0_authors_0" name="sections[books][0][authors][0]">
+    <input type="hidden" value="%authors[2][system:id]%" id="sections_books_0_authors_1" name="sections[books][0][authors][1]">
     <input type="text" value="XSLT Cookbook" id="sections_books_1_title" name="sections[books][1][title]">
-    <input type="hidden" value="%authors[1]%" id="sections_books_1_authors" name="sections[books][1][authors]">
+    <input type="hidden" value="%authors[1][system:id]%" id="sections_books_1_authors_0" name="sections[books][1][authors][0]">
 
 
 
