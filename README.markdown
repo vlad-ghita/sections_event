@@ -102,6 +102,59 @@ Here's an example of a full XSL Page for checking permissions:
 - start building forms!
 - see example #5 for XSLT copy+paste code in a Page
 
+### Adding filters with the event
+
+**Q:** Ok. So this event will take care of all my section data coming from frontend. What about ETM and other extensions that need filters to function correctly?
+
+**R:** Create a custom event and add your filters where you want them.
+
+Here's an example. You have a `Contact messages` section and an ETM template with handle `new-message-to-admin`. Also, you want to filter data for XSS, right? This is an event that does just that:
+
+    <?php
+
+        require_once(TOOLKIT.'/class.event.php');
+
+        Final Class EventAdd_My_Filters extends Event
+        {
+
+            public static function about(){
+                return array(
+                    'name' => 'Add my filters !!!',
+                );
+            }
+
+			// we don't want the editor to scramble with this one
+            public static function allowEditorToParse(){
+                return false;
+            }
+
+			// make sure this event runs before Sections Event
+            public function priority(){
+                return self::kHIGH;
+            }
+
+            public function load(){
+                // if Sections Event is not triggered, return
+                if( !isset($_REQUEST['action']['sections']) ){
+                    return;
+                }
+
+                // add desired filters
+                $_REQUEST['sections']['contact-messages']['__filters'] = array(
+                    'xss-fail',
+                    // Email Template manager requires the `etm-` prefix in front of template handle
+                    'etm-new-message-to-admin'
+                );
+            }
+
+        }
+
+Copy this code to `/workspace/events/event.add_my_filters.php` file, add Event to Contact Page and ... hmmm, dance!
+
+### For developers
+
+ETM and XSS work b/c I add the glue code in this extension. If you need other extensions to be supported, please ask those developers to support SectionsEvent delegates as well.
+
 
 
 ## SForm utilities
