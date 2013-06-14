@@ -38,6 +38,53 @@ Installation as usual.
 - click the role you want to set permissions for.
 - set permissions for each section and for each field in section
 
+### Permissions in XSLT
+
+In order to get permission information in XSLT, you must include the `permissions.xsl` utility found in `utilities` folder.
+
+Here's an example of a full XSL Page for checking permissions:
+
+    <?xml version="1.0" encoding="UTF-8"?>
+    <xsl:stylesheet version="1.0"
+            xmlns:xsl="http://www.w3.org/1999/XSL/Transform"
+            xmlns:utils="http://exslt.org/utils"
+            extension-element-prefixes="utils">
+        <!-- Include the "utils" namespace -->
+
+        <!-- Make sure you added `SE : Permissions` data source to your page -->
+
+        <!-- Import `permissions.xsl` utility. Mine resides in utilities folder -->
+        <xsl:import href="../utilities/permissions.xsl"/>
+
+
+        <xsl:output method="xml"
+                doctype-public="-//W3C//DTD XHTML 1.0 Strict//EN"
+                doctype-system="http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"
+                omit-xml-declaration="yes"
+                encoding="UTF-8"
+                indent="yes"/>
+
+
+
+        <xsl:template match="/">
+            <xsl:variable name="actions" select="/data/se-permissions/actions"/>
+
+            <!-- Returns 1 if current member can Create entries in Section with ID = 1 -->
+            <!-- Returns 0 otherwise -->
+            <xsl:value-of select="utils:permCheck('section', 1, $actions/create)"/>
+
+            <xsl:if test="utils:permCheck('field', 72, $actions/view) = 1">
+                <p>If current member can View the field with ID = 72, this message is displayed.</p>
+            </xsl:if>
+
+            <xsl:if test="utils:permCheck('section', 3, $actions/delete) = 0">
+                <p>You are not allowed to delete entries in Section #3.</p>
+            </xsl:if>
+        </xsl:template>
+
+
+    </xsl:stylesheet>
+
 
 
 ## Using `Sections` event
