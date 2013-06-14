@@ -13,8 +13,6 @@
 	<!--
 		Name: Section Form Controls
 		Description: An XSLT utility to create truly powerful HTML forms with Symphony.
-					 Inspired from @nickdunn's Form Controls.
-		Version: 1.0
 		Author: Vlad Ghita <http://github.com/vlad-ghita>
 		URL: http://github.com/vlad-ghita/sections_event
 	-->
@@ -22,12 +20,14 @@
 
 
 
-	<xsl:import href="sform.checkbox.xsl"/>
-	<xsl:import href="sform.input.xsl"/>
-	<xsl:import href="sform.label.xsl"/>
-	<xsl:import href="sform.radio.xsl"/>
-	<xsl:import href="sform.select.xsl"/>
-	<xsl:import href="sform.textarea.xsl"/>
+	<xsl:import href="sform.control.checkbox.xsl"/>
+	<xsl:import href="sform.control.input.xsl"/>
+	<xsl:import href="sform.control.input-entry-action.xsl"/>
+	<xsl:import href="sform.control.input-system-id.xsl"/>
+	<xsl:import href="sform.control.label.xsl"/>
+	<xsl:import href="sform.control.radio.xsl"/>
+	<xsl:import href="sform.control.select.xsl"/>
+	<xsl:import href="sform.control.textarea.xsl"/>
 	<xsl:import href="sform.validation.xsl"/>
 
 
@@ -43,7 +43,7 @@
 	<xsl:variable name="sform:events" select="/data/events"/>
 
 	<!-- Class for invalid form controls -->
-	<xsl:variable name="sform:invalid-class" select="'invalid'"/>
+	<xsl:variable name="sform:invalid-class" select="'error'"/>
 
 
 
@@ -67,11 +67,11 @@
 
 		<xsl:variable name="default-name">
 			<xsl:call-template name="sform:control-name">
-				<xsl:with-param name="handle" select="$handle"/>
 				<xsl:with-param name="prefix" select="$prefix"/>
-				<xsl:with-param name="suffix" select="$suffix"/>
 				<xsl:with-param name="section" select="$section"/>
 				<xsl:with-param name="position" select="$position"/>
+				<xsl:with-param name="handle" select="$handle"/>
+				<xsl:with-param name="suffix" select="$suffix"/>
 			</xsl:call-template>
 		</xsl:variable>
 

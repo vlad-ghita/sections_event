@@ -68,8 +68,8 @@
 			<xsl:if test="$handle != ''">
 				<for>
 					<xsl:choose>
-					    <xsl:when test="$attribs/for != ''">
-					        <xsl:value-of select="$attribs/for"/>
+					    <xsl:when test="$attribs/id != ''">
+					        <xsl:value-of select="$attribs/id"/>
 					    </xsl:when>
 					    <xsl:otherwise>
 						    <xsl:call-template name="sform:control-id">

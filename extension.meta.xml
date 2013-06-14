@@ -21,7 +21,26 @@
 		</author>
 	</authors>
 
+	<dependencies>
+		<dependency version="1.2">members</dependency>
+	</dependencies>
+
 	<releases>
+		<release version="2.0" date="2013-06-14" min="2.3"><![CDATA[
+			* PHP: Requires at least PHP 5.3.0 and Members extension [v1.2].
+			* PHP: Added permission access control at Section level and Field level.
+			* PHP: Actions supported on entries: Create, Edit, Delete.
+			* PHP: Dropped compatibility with classic Symphony Section Events. Fires custom delegates now.
+			* PHP: Dropped support for `__fields` meta section.
+			* PHP: Compatibility with XSS Filter extension. See Readme for using filters.
+			* PHP: Compatibility with Email Template Manager extension. See Readme for using filters.
+			* XSLT: New helper `sform:input-system-id` for creating an input for an Entrie's System ID.
+			* XSLT: New helper `sform:input-entry-action` to set the apropriate action for that entry.
+			* XSLT: Form validation is split in 2 parts: one for classic events and another for Sections Event.
+			* XSLT: Various fixes.
+			* Readme updates.
+		]]></release>
+
 		<release version="1.5" date="2013-05-10" min="2.3"><![CDATA[
 			* PHP: Fixed file uploads.
 			* XSLT: Change default error class from `error` to `invalid`.

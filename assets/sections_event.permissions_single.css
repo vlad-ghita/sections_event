@@ -1,0 +1,80 @@
+.permissions {
+	margin: 20px 0 20px 18px;
+}
+
+.permissions h3 {
+	line-height: 18px;
+	margin-bottom: 10px;
+}
+
+.clearfix:before, .clearfix:after {
+	display: table;
+	content: "";
+}
+
+.clearfix:after {
+	clear: both;
+}
+
+/* Tables */
+
+.permissions table {
+	margin-top: 0;
+	width: 100%;
+}
+
+.permissions thead select {
+	margin: 0 0 10px 0;
+}
+
+.permissions th,
+.permissions td{
+	width: 60px;
+}
+
+.permissions th {
+	padding: 0 5px;
+}
+
+.permissions td {
+	padding: 3px 5px;
+}
+
+.permissions th:first-child,
+.permissions td:first-child{
+	padding-left: 3px;
+	width: auto;
+}
+
+.permissions td:first-child {
+	border-left: 1px solid #E6E6E5;
+}
+
+.permissions td:last-child {
+	border-right: 1px solid #E6E6E5;
+}
+
+/* Sections */
+
+.permissions .sections {
+	float: left;
+	width: 500px;
+}
+
+/* Fields */
+
+.permissions .fields {
+	float: left;
+	margin-left: 40px;
+	width: 400px;
+}
+
+.permissions .fields .handle {
+	width: 120px;
+}
+
+.permissions .fields .section-selector select {
+	display: inline-block;
+	margin: 0;
+	width: auto;
+}

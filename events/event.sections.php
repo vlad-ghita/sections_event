@@ -2,62 +2,32 @@
 
 
 
-	require_once(EXTENSIONS.'/sections_event/lib/class.event.section.php');
 	require_once(TOOLKIT.'/class.sectionmanager.php');
+	require_once(TOOLKIT.'/class.entrymanager.php');
+
+	require_once(EXTENSIONS.'/sections_event/lib/class.se_perman.php');
 
 
 
 	/**
 	 * Processes any amount of sections and their relations.
 	 */
-	Final Class EventSections extends SectionsSectionEvent
+	Final Class EventSections extends Event
 	{
-		const ACTION_NONE = 0;
-
-		const ACTION_CREATE = 1;
-
-		const ACTION_EDIT = 2;
-
-		const ACTION_DELETE = 3;
-
-		private $actions = array('none', 'create', 'edit', 'delete');
-
-		public $eParamFILTERS = array();
 
 		/**
-		 * Current section ID.
-		 *
-		 * @var int
-		 */
-		private static $source;
-
-		/**
-		 * Sections values at current processing stage
+		 * Sections values at current processing stage.
 		 *
 		 * @var array
 		 */
-		private $crt_sections = array();
+		private $sections = array();
 
 		/**
-		 * Keeps track of errors appeared during processing.
+		 * Knows if errors occurred during current processing stage.
 		 *
 		 * @var array
 		 */
-		private $errors = array();
-
-		public function __construct(array $env = null){
-			$this->errors = array(
-				'prepare' => false,
-				'entry' => false,
-				'delete' => false,
-				'check' => false,
-				'set' => false,
-				'link' => false,
-				'commit' => false
-			);
-
-			parent::__construct( $env );
-		}
+		private $error = false;
 
 
 
@@ -75,12 +45,10 @@
 			return false;
 		}
 
-		public static function getSource(){
-			return self::$source;
-		}
-
-		public static function setSource($section_id){
-			self::$source = $section_id;
+		public function load(){
+			if( isset($_REQUEST['action']['sections']) ){
+				return $this->execute();
+			}
 		}
 
 
@@ -90,109 +58,80 @@
 		/*------------------------------------------------------------------------------------------------*/
 
 		/**
-		 * Event entry point
-		 *
-		 * @return XMLElement
-		 */
-		public function load(){
-			if( isset($_REQUEST['action']['sections']) ){
-				return $this->execute();
-			}
-		}
-
-		/**
 		 * Main method.
 		 *
 		 * @return XMLElement
 		 */
-		public function execute(){
-			$sections_input = $this->getInputData();
+		private function execute(){
+			$sections_post = $_REQUEST['sections'];
 
 			// store the redirect
 			$redirect = '';
-			if( isset($sections_input['__redirect']) ){
-				$redirect = $sections_input['__redirect'];
-				unset($sections_input['__redirect']);
+			if( isset($sections_post['__redirect']) ){
+				$redirect = $sections_post['__redirect'];
+				unset($sections_post['__redirect']);
 			}
 
-			// allow exclusion of sections, even if form data exists
-			$excluded = array();
-			if( isset($sections_input['__excluded']) ){
-				$excluded = $sections_input['__excluded'];
-				unset($sections_input['__excluded']);
+			if( !is_array( $sections_post ) || empty($sections_post) ){
+				return null;
 			}
 
-			if( !is_array( $excluded ) ){
-				$excluded = array($excluded);
-			}
-
-			foreach($excluded as $handle){
-				if( array_key_exists( $handle, $sections_input ) ){
-					unset($sections_input[$handle]);
-				}
-			}
-
-			if( empty($sections_input) ) return null;
-
-			$this->crt_sections = $sections_input;
+			$this->sections = $sections_post;
 
 
-			/* 1. Prepare data for processing. Fire PreSaveFilters delegate */
-			$sections_prepare = $this->sectionsPrepare( $sections_input );
-
-			if( $this->errorsExist() ){
+			/* 1. Prepare data for processing. Fire Sections_Event_PrepareFilter */
+			$sections_prepare = $this->sectionsPrepare( $sections_post );
+			if( $this->errorExists() ){
 				return $this->buildOutput( $sections_prepare );
 			}
+			$this->sections = $sections_prepare;
 
-			$this->crt_sections = $sections_prepare;
+
+			/* 2. Check permissions */
+			$sections_permissions = $this->sectionsCheckPermissions( $sections_prepare );
+			if( $this->errorExists() ){
+				return $this->buildOutput( $sections_permissions );
+			}
+			$this->sections = $sections_permissions;
 
 
-			/* 2. Delete Entries */
-			$sections_delete = $this->sectionsDelete( $sections_prepare );
-
-			if( $this->errorsExist() ){
+			/* 3. Delete Entries */
+			$sections_delete = $this->sectionsDeleteEntries( $sections_permissions );
+			if( $this->errorExists() ){
 				return $this->buildOutput( $sections_delete );
 			}
+			$this->sections = $sections_delete;
 
-			$this->crt_sections = $sections_delete;
 
-
-			/* 3. Next stages refer to Create & Edit. Check fields data */
-			$sections_check = $this->sectionsCheck( $sections_delete );
-
-			if( $this->errorsExist() ){
+			/* 4. Create & Edit. Check fields data */
+			$sections_check = $this->sectionsCheckFields( $sections_delete );
+			if( $this->errorExists() ){
 				return $this->buildOutput( $sections_check );
 			}
+			$this->sections = $sections_check;
 
-			$this->crt_sections = $sections_check;
 
-
-			/* 4. Set fields data. This creates Entries in db table */
-			$sections_set = $this->sectionsSet( $sections_check );
-
-			if( $this->errorsExist() ){
+			/* 5. Create & Edit. Set fields data. This creates Entries in db table */
+			$sections_set = $this->sectionsSetFields( $sections_check );
+			if( $this->errorExists() ){
 				$this->rollback( $sections_set );
 				return $this->buildOutput( $sections_set );
 			}
+			$this->sections = $sections_set;
 
-			$this->crt_sections = $sections_set;
 
-
-			/* 5. Replace Variables found in fields data at this stage b/c IDs can be used to link entries */
+			/* 6. Replace Variables found in fields data at this stage b/c IDs can be used to link entries */
 			$sections_replace = $this->sectionsReplace( $sections_set );
+			$this->sections   = $sections_replace;
 
-			$this->crt_sections = $sections_replace;
 
-
-			/* 6. Persist field data to db. Fires other delegates */
+			/* 7. Create & Edit. Persist field data to db. Fire Sections_Event_PostSaveFilter */
 			$sections_commit = $this->sectionsCommit( $sections_replace );
-
-			if( $this->errorsExist() ){
+			if( $this->errorExists() ){
 				$this->rollback( $sections_commit );
 				return $this->buildOutput( $sections_commit );
 			}
-
-			$this->crt_sections = $sections_commit;
+			$this->sections = $sections_commit;
 
 
 			// redirect
@@ -227,67 +166,33 @@
 			$output = array();
 
 			foreach($input as $handle => $data){
-				$filters = array();
 				$entries = array();
-				$result = new XMLElement($handle);
+				$result  = new XMLElement($handle);
 
 				// make sure section exists
 				$section_id = SectionManager::fetchIDFromHandle( $handle );
 
-				if( $handle == '__fields' ){
-					$done = true;
-					$entry_data = $this->sectionsPrepareEntry( 0, $data );
-					$entries[0] = $entry_data;
-
-					$output[$handle] = array(
-						'id' => $section_id,
-						'done' => $done,
-						'filters' => $filters,
-						'entries' => $entries,
-						'result' => $result
-					);
-
-					continue;
-				}
-
-				if( is_null( $section_id ) && $handle != '__fields' ){
+				if( $section_id === null ){
 					$result->setAttribute( 'result', 'error' );
 					$result->appendChild( new XMLElement('message', __( 'The Section, %s, could not be found.', array($handle) )) );
 					$done = true;
 
 					$output[$handle] = array(
-						'id' => $section_id,
-						'done' => $done,
-						'filters' => $filters,
+						'id'      => $section_id,
+						'done'    => $done,
 						'entries' => $entries,
-						'result' => $result
+						'result'  => $result
 					);
 
 					continue;
 				}
 
-				// set filters if they exist
+				// get section level filters
+				$section_filters = array();
 				if( isset($data['__filters']) ){
-					$filters = is_array( $data['__filters'] ) ? $data['__filters'] : array($data['__filters']);
+					$section_filters = is_array( $data['__filters'] ) ? $data['__filters'] : array($data['__filters']);
 					unset($data['__filters']);
 				}
-
-				// find edit IDs
-				$__edit = array();
-				if( isset($data['__edit']) ){
-					$__edit = is_array( $data['__edit'] ) ? $data['__edit'] : array($data['__edit']);
-					unset($data['__edit']);
-				}
-
-				// find delete IDs
-				$__delete = array();
-				if( isset($data['__delete']) ){
-					$__delete = is_array( $data['__delete'] ) ? $data['__delete'] : array($data['__delete']);
-					unset($data['__delete']);
-				}
-
-				// set current context
-				$this->setCurrentContext( $section_id, $filters );
 
 				// prepare entries that must be created or edited
 				if( !empty($data) && is_array( $data ) ){
@@ -299,37 +204,15 @@
 					}
 
 					foreach($data as $position => $fields){
-						$id_edit = isset($__edit[$position]) ? $__edit[$position] : null;
-
-						if( is_numeric( $id_edit ) ){
-							$action = self::ACTION_EDIT;
-							$entry_id = $id_edit;
-
-							// skip entries marked for deletion
-							if( in_array( $entry_id, $__delete ) ) continue;
-						}
-						else{
-							$action = self::ACTION_CREATE;
-							$entry_id = null;
-						}
-
-//						$fields = $this->getPostData( $handle, $position, $fields );
-
-						$entries[$position] = $this->sectionsPrepareEntry( $position, $fields, $entry_id, $section_id, $action );
+						$entries[$position] = $this->sectionsPrepareEntry( $handle, $section_filters, $position, $fields );
 					}
 				}
 
-				// prepare entries that must be deleted
-				foreach($__delete as $position => $entry_id){
-					$entries[$position] = $this->sectionsPrepareEntry( $position, array(), $entry_id, $section_id, self::ACTION_DELETE );
-				}
-
 				$output[$handle] = array(
-					'id' => $section_id,
-					'done' => empty($entries),
-					'filters' => $filters,
+					'id'      => $section_id,
+					'done'    => empty($entries),
 					'entries' => $entries,
-					'result' => $result
+					'result'  => $result
 				);
 			}
 
@@ -339,155 +222,276 @@
 		/**
 		 * Create necessary data for an Entry.
 		 *
-		 * @param int   $position
-		 * @param array $fields
-		 * @param int   $entry_id
-		 * @param int   $section_id
-		 * @param int   $action
+		 * @param string $section_handle
+		 * @param array  $section_filters
+		 * @param int    $position
+		 * @param array  $original_fields
 		 *
 		 * @return array
 		 */
-		private function sectionsPrepareEntry($position, $fields, $entry_id = null, $section_id = null, $action = self::ACTION_NONE){
-			$result = new XMLElement('entry', null, array('position' => $position, 'action' => $this->actions[$action]));
-			$done = false;
+		private function sectionsPrepareEntry($section_handle, array $section_filters, $position, array $original_fields){
+			$action   = null;
+			$entry_id = null;
+			$filters  = array();
 
+			// determine filters
+			if( isset($original_fields['__filters']) ){
+				$filters = is_array( $original_fields['__filters'] ) ? $original_fields['__filters'] : array($original_fields['__filters']);
+				unset($original_fields['__filters']);
+			}
+
+			$filters = array_replace_recursive( $section_filters, $filters );
+
+			// determine entry_id
+			if( isset($original_fields['__system-id']) ){
+				$entry_id = $original_fields['__system-id'];
+				unset($original_fields['__system-id']);
+			}
+
+			// // determine action
+			if( isset($original_fields['__action']) ){
+				$action = $original_fields['__action'];
+				unset($original_fields['__action']);
+			}
+			elseif( is_numeric( $entry_id ) ){
+				$action = SE_Permissions::ACTION_EDIT;
+			}
+			else{
+				$action = SE_Permissions::ACTION_CREATE;
+			}
+
+			$fields = $this->getPostData( $section_handle, $position, $original_fields );
+
+			$res_entry = new XMLElement('entry', null, array('action' => $action));
+			$done      = false;
+			$entry     = null;
+
+			// get the Entry object
 			switch( $action ){
 
-				case self::ACTION_CREATE:
-					$e =& EntryManager::create();
-					$e->set( 'section_id', $section_id );
+				case SE_Permissions::ACTION_CREATE:
+					$entry = EntryManager::create();
+					$entry->set( 'section_id', SectionManager::fetchIDFromHandle( $section_handle ) );
 					break;
 
-				case self::ACTION_EDIT:
-				case self::ACTION_DELETE:
-					$e =& EntryManager::fetch( $entry_id );
-					$e = $e[0];
+				case SE_Permissions::ACTION_EDIT:
+				case SE_Permissions::ACTION_DELETE:
+					$entry = EntryManager::fetch( $entry_id );
+					$entry = $entry[0];
 
-					if( !$e instanceof Entry ){
-						$this->errors['entry'] = true;
-						$done = true;
-
-						$result->setAttribute( 'result', 'error' );
-						$result->appendChild( new XMLElement('message', __( 'The Entry, %s, could not be found.', array($entry_id) )) );
+					if( !$entry instanceof Entry ){
+						$this->error = true;
+						$done        = true;
+						$this->resultEntry( $res_entry, 'error', __( 'The Entry `%d` could not be found.', array($entry_id) ) );
 					}
 					break;
 
-				case self::ACTION_NONE:
 				default:
-					$e = null;
+					$done = true;
+					$this->resultEntry( $res_entry, 'error', __( 'Requested action `%s` is not supported.', array($action) ) );
 					break;
 			}
 
-			// create the post data element. This will be replaced in the commit stage
-			// with substituted values from frontend
-			$post_values = new XMLElement('post-values');
-			General::array_to_xml( $post_values, $fields, true );
+			// fire PreSaveFilter
+			$res_filters = new XMLElement('filters');
 
-			// fire PreSaveFilters here because it's earliest point possible
-			if( $this->processPreSaveFilters( $result, $fields, $post_values, $entry_id ) === false ){
-				if( $section_id !== null ){
-					$this->errors['prepare'] = true;
-					$done = true;
+			if( !$done ){
+				if( !$this->filtersProcessPrepare( $res_filters, $entry, $fields, $original_fields, $filters, $action ) ){
+					$this->error = true;
+					$this->resultEntry( $res_entry, 'error' );
 				}
 			}
 
 			return array(
-				'action' => $action,
-				'id' => $entry_id,
-				'entry' => $e,
-				'fields' => $fields,
-				'post_values' => $post_values,
-				'done' => $done,
-				'result' => $result
+				'action'      => $action,
+				'id'          => $entry_id,
+				'entry'       => $entry,
+				'orig_fields' => $fields,
+				'fields'      => $fields,
+				'filters'     => $filters,
+				'done'        => $done,
+				'result'      => new XMLElement('entry', null, array('position' => $position)),
+				'res_entry'   => $res_entry,
+				'res_fields'  => new XMLElement('fields'),
+				'res_filters' => $res_filters,
 			);
 		}
 
 
 		/**
-		 * Takes the sections from sectionsPrepare() and deletes marked entries
+		 * Checks Entries for permissions.
 		 *
 		 * @param $input
 		 *
 		 * @return array
 		 */
-		private function sectionsDelete($input){
+		private function sectionsCheckPermissions($input){
 			$output = $input;
 
-//			include_once(TOOLKIT.'/class.entrymanager.php');
-//
-//			foreach($output as $handle => &$section){
-//
-//				foreach($section['entries'] as &$entry){
-//
-//					if( $entry['action'] === self::ACTION_DELETE ){
-//						$id = $entry['entry']->get( 'id' );
-//
-//						if( is_numeric( $id ) ){
-//							try{
-//								EntryManager::delete( $id );
-//								$entry['done'] = true;
-//							} catch( Exception $e ){
-//								$this->errors['delete'] = true;
-//								$entry['result'] = $this->_appendErrors( $entry['result'], $entry['fields'], array() );
-//							}
-//						}
-//					}
-//				}
-//			}
+			foreach($output as $handle => &$section){
+
+				$schema = FieldManager::fetchFieldsSchema( $section['id'] );
+
+				foreach($section['entries'] as &$entry){
+
+					$valid = true;
+
+					$has_perm_section = SE_PerMan::getControl( 'section' )->check( $section['id'], $entry['action'], $entry['id'] );
+
+					if( !$has_perm_section ){
+						$this->error   = true;
+						$entry['done'] = true;
+						$valid         = false;
+						$entry['res_filters']->appendChild(
+							$this->filtersBuildElement( 'permissions-section', false, __( 'You do not have enough permissions to perform this operation.' ) )
+						);
+					}
+
+					if( !is_array( $schema ) || empty($schema) ){
+						continue;
+					}
+
+					// check fields only on EDIT and VIEW b/c there's no practical reason to check other values
+					if(
+						$entry['action'] === SE_Permissions::ACTION_EDIT
+						|| $entry['action'] === SE_Permissions::ACTION_VIEW
+					){
+						foreach($schema as $field_info){
+							$field_name = $field_info['element_name'];
+
+							// make sure this field has data
+							if( !isset($entry['fields'][$field_name]) ){
+								continue;
+							}
+
+							$has_perm_field = SE_PerMan::getControl( 'field' )->check( $field_info['id'], $entry['action'] );
+
+							if( !$has_perm_field ){
+								$this->error   = true;
+								$entry['done'] = true;
+								$valid         = false;
+								$entry['res_filters']->appendChild(
+									$this->filtersBuildElement(
+										"permissions-field-$field_name",
+										false,
+										__( 'You do not have enough permissions to perform this operation.' )
+									)
+								);
+							}
+						}
+					}
+
+					if( !$valid ){
+						$this->resultEntry( $entry['res_entry'], 'error' );
+					}
+
+				}
+			}
 
 			return $output;
 		}
 
 
 		/**
-		 * Takes the sections from sectionsDelete() and checks field data foreach Entry
+		 * Deletes marked entries
 		 *
 		 * @param $input
 		 *
 		 * @return array
 		 */
-		private function sectionsCheck($input){
+		private function sectionsDeleteEntries($input){
+			$output = $input;
+
+			include_once(TOOLKIT.'/class.entrymanager.php');
+
+			foreach($output as $handle => &$section){
+
+				foreach($section['entries'] as &$entry){
+
+					if( $entry['action'] === SE_Permissions::ACTION_DELETE ){
+						$id = $entry['entry']->get( 'id' );
+
+						if( is_numeric( $id ) ){
+							try{
+								EntryManager::delete( $id );
+								$entry['done'] = true;
+							} catch( Exception $e ){
+								$this->error = true;
+								$this->resultEntry( $entry['res_entry'], 'error' );
+							}
+						}
+					}
+				}
+			}
+
+			return $output;
+		}
+
+
+		/**
+		 * Checks field data foreach Entry
+		 *
+		 * @param $input
+		 *
+		 * @return array
+		 */
+		private function sectionsCheckFields($input){
 			$output = $input;
 
 			foreach($output as $handle => &$section){
 
 				// skip done sections
-				if( $section['done'] === true ) continue;
+				if( $section['done'] === true ){
+					continue;
+				}
+
+				$schema = FieldManager::fetchFieldsSchema( $section['id'] );
+
+				if( !is_array( $schema ) || empty($schema) ){
+					continue;
+				}
 
 				foreach($section['entries'] as &$entry){
 
 					// skip done entries
-					if( $entry['done'] === true ) continue;
+					if( $entry['done'] === true ){
+						continue;
+					}
 
-					$errors = array();
+					$errors                = array();
+					$entry_status          = __ENTRY_OK__;
+					$ignore_missing_fields = $entry['action'] === SE_Permissions::ACTION_EDIT;
 
-					$entry_status = __ENTRY_OK__;
-					$schema = FieldManager::fetchFieldsSchema( $section['id'] );
+					foreach($schema as $field_info){
+						$field_name = $field_info['element_name'];
+						$has_data   = isset($entry['fields'][$field_name]);
 
-					$ignore_missing_fields = ($entry['entry']->get( 'id' ) ? true : false);
+						if( $ignore_missing_fields && !$has_data ){
+							continue;
+						}
 
-					foreach($schema as $info){
-						$result = null;
-						$message = null;
-						$field = FieldManager::fetch( $info['id'] );
+						$field_id = $field_info['id'];
+						$message  = null;
 
-						if( $ignore_missing_fields && !isset($entry['fields'][$info['element_name']]) ) continue;
+						/** @var $field Field */
+						$field = FieldManager::fetch( $field_id );
 
-						$field_data = isset($entry['fields'][$info['element_name']]) ? $entry['fields'][$info['element_name']] : null;
+						$field_data = $has_data ? $entry['fields'][$field_name] : null;
 
 						$field_status = $field->checkPostFieldData( $field_data, $message, $entry['entry']->get( 'id' ) );
 
 						if( $field_status != Field::__OK__ ){
-							$entry_status = __ENTRY_FIELD_ERROR__;
-							$errors[$info['id']]['code'] = $field_status;
-							$errors[$info['id']]['message'] = $message;
+							$entry_status                 = __ENTRY_FIELD_ERROR__;
+							$errors[$field_id]['code']    = $field_status;
+							$errors[$field_id]['message'] = $message;
 						}
 					}
 
 					if( $entry_status !== __ENTRY_OK__ ){
-						$this->errors['check'] = true;
+						$this->error   = true;
 						$entry['done'] = true;
-						$entry['result'] = $this->_appendErrors( $entry['result'], $entry['fields'], $errors );
+						$this->resultEntry( $entry['res_entry'], 'error' );
+						$this->resultFields( $entry['res_fields'], $entry['fields'], $errors );
 					}
 				}
 			}
@@ -497,13 +501,13 @@
 
 
 		/**
-		 * Takes the sections from sectionsCheck() and sets field data foreach Entry
+		 * Sets field data foreach Entry
 		 *
 		 * @param $input
 		 *
 		 * @return array
 		 */
-		private function sectionsSet($input){
+		private function sectionsSetFields($input){
 			$output = $input;
 
 			foreach($output as $handle => &$section){
@@ -518,12 +522,31 @@
 
 					$errors = array();
 
-					if( __ENTRY_OK__ != $entry['entry']->setDataFromPost( $entry['fields'], $errors, false, ($entry['entry']->get( 'id' ) ? true : false) ) ){
-						$this->errors['set'] = true;
+					$ignore_missing_fields = $entry['action'] === SE_Permissions::ACTION_EDIT;
+
+					if( __ENTRY_OK__ != $entry['entry']->setDataFromPost( $entry['fields'], $errors, false, $ignore_missing_fields ) ){
+						$this->error   = true;
 						$entry['done'] = true;
-						$entry['result'] = self::appendErrors( $entry['result'], $entry['fields'], $errors );
+						$this->resultFields( $entry['res_fields'], $entry['fields'], $errors );
 						continue;
 					}
+
+					/**
+					 * After data is set from fields.
+					 *
+					 * @delegate Sections_Event_FieldsPostSet
+					 *
+					 * @param string $context
+					 * '*'
+					 * @param int    $section_id
+					 * @param Entry  $entry
+					 * @param array  $fields
+					 */
+					Symphony::ExtensionManager()->notifyMembers( 'Sections_Event_FieldsPostSet', '*', array(
+						'section_id' => $section['id'],
+						'entry'      => $entry['entry'],
+						'fields'     => $entry['fields']
+					) );
 				}
 			}
 
@@ -532,7 +555,7 @@
 
 
 		/**
-		 * Takes the sections from sectionsSet() and replaces variables in field data
+		 * Replaces variables in field data
 		 *
 		 * @param $input
 		 *
@@ -548,10 +571,6 @@
 					$old_fields = $entry['fields'];
 
 					foreach($entry['fields'] as $field => $value){
-
-						// skip fields of type upload
-						if( $this->isFiledForUpload( $handle, $field ) ) continue;
-
 						$new_value = $this->sectionsReplaceGetNewValue( $value );
 
 						if( $new_value !== $value ){
@@ -566,19 +585,11 @@
 								$f_id = FieldManager::fetchFieldIDFromElementName( $field, $section['id'] );
 
 								/** @var $f Field */
-								$f = FieldManager::fetch( $f_id );
+								$f      = FieldManager::fetch( $f_id );
 								$f_data = $f->processRawFieldData( $new_value, $s, $message, false, $entry['entry']->get( 'id' ) );
 								$entry['entry']->setData( $f_id, $f_data );
 							}
 						}
-					}
-
-					// if values were replaced, update returned post-values
-					if( $old_fields !== $entry['fields'] && !empty($entry['fields']) ){
-						$post_values = new XMLElement('post-values');
-						General::array_to_xml( $post_values, $entry['fields'], true );
-
-						$entry['post_values'] = $post_values;
 					}
 				}
 			}
@@ -629,14 +640,14 @@
 			// explode the parts from a variable
 			$result = preg_split( '/(?:\[|\])+/', $variable, -1, PREG_SPLIT_NO_EMPTY );
 
-			$bit_section = array_shift( $result );
+			$bit_section  = array_shift( $result );
 			$bit_position = isset($result[0]) && is_numeric( $result[0] ) ? array_shift( $result ) : 0;
 
 			// check if requested entry was sent with the form
-			if( !isset($this->crt_sections[$bit_section]) ) return $original;
-			if( !isset($this->crt_sections[$bit_section]['entries'][$bit_position]) ) return $original;
+			if( !isset($this->sections[$bit_section]) ) return $original;
+			if( !isset($this->sections[$bit_section]['entries'][$bit_position]) ) return $original;
 
-			$entry = $this->crt_sections[$bit_section]['entries'][$bit_position];
+			$entry = $this->sections[$bit_section]['entries'][$bit_position];
 
 			$new_value = null;
 
@@ -650,7 +661,7 @@
 			// link other fields
 			else{
 				// Go go go deep in entry's fields array and get the value from keys
-				$new_value = $this->getValueFromMultidimArrayByKeys( $entry['fields'], $result );
+				$new_value = $this->getArrayValueByDepthKeys( $entry['fields'], $result );
 			}
 
 			if( $new_value == null ) return $original;
@@ -673,95 +684,46 @@
 			foreach($output as $handle => &$section){
 
 				// skip done sections
-				if( $section['done'] === true ) continue;
-
-				// set current context
-				$this->setCurrentContext( $section['id'], $section['filters'] );
+				if( $section['done'] === true ){
+					continue;
+				}
 
 				foreach($section['entries'] as &$entry){
 
-					/**
-					 * Pre commit of entry.
-					 *
-					 * @delegate SectionsEvent_EntryPreCommit
-					 *
-					 * @param string $context
-					 * '*'
-					 * @param int    $section_id
-					 * @param Entry  $entry
-					 * @param array  $fields
-					 */
-					Symphony::ExtensionManager()->notifyMembers( 'SectionsEvent_EntryPreCommit', '*', array('section_id' => $section['id'], 'entry' => &$entry['entry'], 'fields' => &$entry['fields']) );
+					// Entry is done at this stage
+					$entry['done'] = true;
 
 					// try to commit to database
 					if( $entry['entry']->commit() === false ){
 						$entry['done'] = true;
-						$this->errors['commit'] = true;
-						$entry['result']->setAttribute( 'result', 'error' );
-						$entry['result']->appendChild( new XMLElement('message', __( 'Unknown errors where encountered when saving.' )) );
-
-						if( isset($entry['post_values']) && is_object( $entry['post_values'] ) ){
-							$entry['result']->appendChild( $entry['post_values'] );
-						}
-
+						$this->error   = true;
+						$this->resultEntry( $entry['res_entry'], 'error', __( 'Unknown errors where encountered when saving.' ) );
 						continue;
 					}
 
-					/**
-					 * Post commit of entry.
-					 *
-					 * @delegate SectionsEvent_EntryPostCommit
-					 *
-					 * @param string $context
-					 * '*'
-					 * @param int    $section_id
-					 * @param Entry  $entry
-					 * @param array  $fields
-					 */
-					Symphony::ExtensionManager()->notifyMembers( 'SectionsEvent_EntryPostCommit', '*', array('section_id' => $section['id'], 'entry' => $entry['entry'], 'fields' => $entry['fields']) );
-
-					// Entry was managed, add the good news to $result
-					$entry['done'] = true;
-
 					switch( $entry['action'] ){
-						case self::ACTION_CREATE:
-							$type = 'created';
+						case SE_Permissions::ACTION_CREATE:
 							$message = __( 'Entry created successfully.' );
 							break;
 
-						case self::ACTION_EDIT:
-							$type = 'edited';
+						case SE_Permissions::ACTION_EDIT:
 							$message = __( 'Entry edited successfully.' );
 							break;
 
-						case self::ACTION_DELETE:
-							$type = 'deleted';
+						case SE_Permissions::ACTION_DELETE:
 							$message = __( 'Entry deleted successfully.' );
 							break;
 
-						case self::ACTION_NONE:
 						default:
-							$type = '';
-							$message = '';
+							$message = __( 'This should not be reached.' );
 							break;
 					}
 
-					$entry['result']->setAttributeArray( array(
-						'result' => 'success',
-						'type' => $type,
-						'id' => $entry['entry']->get( 'id' )
-					) );
+					$this->resultEntry( $entry['res_entry'], 'success', $message );
 
-					$entry['result']->appendChild( new XMLElement('message', $message) );
+					$entry['res_entry']->setAttribute( 'id', $entry['entry']->get( 'id' ) );
 
-					// PASSIVE FILTERS ONLY AT THIS STAGE. ENTRY HAS ALREADY BEEN CREATED.
-					if( in_array( 'send-email', $this->eParamFILTERS ) ){
-						$fields = $entry['fields'];
-						$entry['result'] = $this->processSendMailFilter( $entry['result'], $_POST['send-email'], $fields, SectionManager::fetch( $this->getSource() ), $entry['entry'] );
-					}
-
-					$entry['result'] = $this->processPostSaveFilters( $entry['result'], $entry['fields'], $entry['entry'] );
-					$entry['result'] = $this->processFinalSaveFilters( $entry['result'], $entry['fields'], $entry['entry'] );
+					$this->filtersProcessCommit( $entry['res_filters'], $entry['entry'], $entry['fields'], $entry['filters'], $entry['action'] );
 				}
 			}
 
@@ -774,40 +736,45 @@
 		/* Internal utilities */
 		/*------------------------------------------------------------------------------------------------*/
 
-		private function _appendErrors(XMLElement $result, array $fields, $errors){
-			$result->setAttribute( 'result', 'error' );
-			$result->appendChild( new XMLElement('message', __( 'Entry encountered errors when saving.' )) );
-
-			foreach($errors as $field_id => $data){
-				$field = FieldManager::fetch( $field_id );
-
-				if( is_array( $fields[$field->get( 'element_name' )] ) ){
-					$type = array_reduce( $fields[$field->get( 'element_name' )], array('SectionEvent', '__reduceType') );
-				}
-				else{
-					$type = ($fields[$field->get( 'element_name' )] == '') ? 'missing' : 'invalid';
-				}
-
-				$result->appendChild( new XMLElement($field->get( 'element_name' ), null, array(
-					'label' => General::sanitize( $field->get( 'label' ) ),
-					'type' => $type,
-					'message' => General::sanitize( $data['message'] ),
-					'code' => $data['code']
-				)) );
+		private function resultEntry(XMLElement $result, $status = 'success', $msg = null){
+			if( $msg === null ){
+				$msg = __( 'Entry encountered errors when saving.' );
 			}
 
-			return $result;
+			if( $status !== 'success' ){
+				$status = 'error';
+			}
+
+			$result->setAttribute( 'result', $status );
+
+			$result->appendChild( new XMLElement('message', $msg) );
+		}
+
+		private function resultFields(XMLElement $result, array $fields, array $errors = array()){
+			foreach($errors as $field_id => $data){
+				/** @var $field Field */
+				$field = FieldManager::fetch( $field_id );
+
+				$elem_name = $field->get( 'element_name' );
+
+				$result->appendChild( new XMLElement($elem_name, null, array(
+					'label'   => General::sanitize( $field->get( 'label' ) ),
+					'type'    => ($fields[$elem_name] == '') ? 'missing' : 'invalid',
+					'message' => General::sanitize( $data['message'] ),
+					'code'    => $data['code']
+				)) );
+			}
 		}
 
 		/**
-		 * In a multidimensional array gets the deep value indicated by keys array.
+		 * In a multidimensional array gets the value deep inside indicated by keys array.
 		 *
 		 * @param $array
 		 * @param $keys
 		 *
 		 * @return null
 		 */
-		private function getValueFromMultidimArrayByKeys($array, $keys){
+		private function getArrayValueByDepthKeys($array, $keys){
 			$k = array_shift( $keys );
 
 			if(
@@ -821,7 +788,7 @@
 			}
 
 			if( !empty($keys) ){
-				return $this->getValueFromMultidimArrayByKeys( $array[$k], $keys );
+				return $this->getArrayValueByDepthKeys( $array[$k], $keys );
 			}
 
 			return $array[$k];
@@ -832,18 +799,8 @@
 		 *
 		 * @return bool
 		 */
-		private function errorsExist(){
-			foreach($this->errors as $error){
-				if( $error ) return true;
-			}
-
-			return false;
-		}
-
-		/** Helper to easily set current context for a section */
-		private function setCurrentContext($section_id, $filters){
-			self::setSource( $section_id );
-			$this->eParamFILTERS = $filters;
+		private function errorExists(){
+			return $this->error;
 		}
 
 		/**
@@ -858,7 +815,7 @@
 
 				foreach($section['entries'] as $entry){
 
-					if( $entry['action'] === self::ACTION_CREATE ){
+					if( $entry['action'] === SE_Permissions::ACTION_CREATE ){
 						$id = $entry['entry']->get( 'id' );
 
 						if( is_numeric( $id ) ){
@@ -888,7 +845,17 @@
 			foreach($sections as $handle => $section){
 
 				foreach($section['entries'] as $entry){
-					$entry['result']->appendChild( $entry['post_values'] );
+					$post_values = new XMLElement('post-values');
+					General::array_to_xml( $post_values, $entry['orig_fields'], true );
+
+					$rep_post_values = new XMLElement('rep-post-values');
+					General::array_to_xml( $rep_post_values, $entry['fields'], true );
+
+					$entry['result']->appendChild( $post_values );
+					$entry['result']->appendChild( $rep_post_values );
+					$entry['result']->appendChild( $entry['res_entry'] );
+					$entry['result']->appendChild( $entry['res_fields'] );
+					$entry['result']->appendChild( $entry['res_filters'] );
 
 					$section['result']->appendChild( $entry['result'] );
 				}
@@ -900,67 +867,59 @@
 		}
 
 		/**
-		 * Similar to @see General::getPostData(), but uses $_REQUEST instead of POST
+		 * Similar to @see General::getPostData(), but adapted to given structure.
+		 *
+		 * @param $handle   - section handle
+		 * @param $position - entry position
+		 * @param $fields   - entry fields
 		 */
-		private function getInputData(){
+		private function getPostData($handle, $position, $fields){
 			if( !function_exists( 'merge_file_post_data' ) ){
-				function merge_file_post_data($type, array $file, &$post){
+				function merge_file_post_data($type, array $file, &$fields){
 					foreach($file as $key => $value){
-						if( !isset($post[$key]) ) $post[$key] = array();
-						if( is_array( $value ) ) {
-							merge_file_post_data( $type, $value, $post[$key] );
+						if( !isset($fields[$key]) ) $fields[$key] = array();
+						if( is_array( $value ) ){
+							merge_file_post_data( $type, $value, $fields[$key] );
 						}
-						else $post[$key][$type] = $value;
+						else $fields[$key][$type] = $value;
 					}
 				}
 			}
 
 			$files = array(
-				'name' => array(),
-				'type' => array(),
+				'name'     => array(),
+				'type'     => array(),
 				'tmp_name' => array(),
-				'error' => array(),
-				'size' => array()
+				'error'    => array(),
+				'size'     => array()
 			);
-			$post = $_REQUEST;
 
-			if( is_array( $_FILES ) && !empty($_FILES) ){
-				foreach($_FILES as $key_a => $data_a){
+			if( is_array( $_FILES['sections'] ) && !empty($_FILES['sections']) ){
+				foreach($_FILES['sections'] as $key_a => $data_a){
 					if( !is_array( $data_a ) ) continue;
-					foreach($data_a as $key_b => $data_b){
-						$files[$key_b][$key_a] = $data_b;
+
+					reset( $data_a[$handle] );
+
+					// indexed entries
+					if( is_numeric( key( $data_a[$handle] ) ) ){
+						$data_c = $data_a[$handle][$position];
+					}
+					// non-indexed entries
+					else{
+						$data_c = $data_a[$handle];
+					}
+
+					foreach($data_c as $key_b => $data_b){
+						$files[$key_a][$key_b] = $data_b;
 					}
 				}
 			}
 
 			foreach($files as $type => $data){
-				merge_file_post_data( $type, $data, $post );
+				merge_file_post_data( $type, $data, $fields );
 			}
 
-			return $post['sections'];
-		}
-
-		/**
-		 * Checks to see if given field is for uploading files
-		 * by looking and $_FILES array
-		 *
-		 * @param $section - handle
-		 * @param $field   - handle
-		 *
-		 * @return bool - true or false
-		 */
-		private function isFiledForUpload($section, $field){
-			if( !isset($_FILES['sections']['name'][$section]) ) return false;
-
-			$data = $_FILES['sections']['name'][$section];
-
-			// takes care of the case when numeric entries are comming through
-			reset($data);
-			if( is_numeric( key( $data ) ) ){
-				$data = current($data);
-			}
-
-			return array_key_exists($field, $data);
+			return $fields;
 		}
 
 		/**
@@ -978,6 +937,155 @@
 					}
 				}
 			}
+		}
+
+
+
+		/*------------------------------------------------------------------------------------------------*/
+		/* Filter utilities */
+		/*------------------------------------------------------------------------------------------------*/
+
+		/**
+		 * Processes all extensions attached to the `SE_PrepareFilter` delegate
+		 *
+		 * @param XMLElement $result
+		 * @param Entry      $entry
+		 * @param array      $fields
+		 * @param array      $original_fields
+		 * @param array      $filters
+		 * @param string     $action
+		 *
+		 * @return boolean
+		 */
+		private function filtersProcessPrepare(XMLElement $result, Entry $entry, array $fields, array $original_fields, array $filters, $action){
+			$can_proceed    = true;
+			$filter_results = array();
+
+			/**
+			 * On preparing entry data. This delegate will force the Event
+			 * to terminate if it populates the `$filter_results` array.
+			 *
+			 * @delegate SE_PrepareFilter
+			 *
+			 * @param Entry  $entry
+			 * @param array  $fields - the fields including $_FILES
+			 * @param array  $original_fields - the fields without $_FILES
+			 * @param array  $filters
+			 * @param string $action
+			 * @param array  $filter_results
+			 *  An associative array of arrays which contain 4 values:
+			 *   - the name of the filter (string)
+			 *   - the status (boolean),
+			 *   - the message (string)
+			 *   - an associative array of additional attributes to add to the filter element.
+			 */
+			Symphony::ExtensionManager()->notifyMembers( 'SE_PrepareFilter', '*', array(
+				'entry'           => $entry,
+				'fields'          => $fields,
+				'original_fields' => $original_fields,
+				'filters'         => $filters,
+				'action'          => $action,
+				'filter_results'  => &$filter_results,
+			) );
+
+			// Fail entry should any `$filter_results` be returned
+			if( is_array( $filter_results ) && !empty($filter_results) ){
+				foreach($filter_results as $fr){
+					list($name, $status, $message, $attributes) = $fr;
+
+					$result->appendChild(
+						$this->filtersBuildElement( $name, $status, $message, $attributes )
+					);
+
+					if( $status === false ){
+						$can_proceed = false;
+					}
+				}
+			}
+
+			return $can_proceed;
+		}
+
+		/**
+		 * Processes all extensions attached to the `SE_CommitFilter` delegate
+		 *
+		 * @param XMLElement $result
+		 * @param Entry      $entry
+		 * @param array      $fields
+		 * @param array      $filters
+		 * @param string     $action
+		 */
+		private function filtersProcessCommit(XMLElement $result, Entry $entry, array $fields, array $filters, $action){
+			$filter_results = array();
+
+			/**
+			 * After saving an entry.
+			 *
+			 * @delegate SE_CommitFilter
+			 *
+			 * @param Entry  $entry
+			 * @param array  $fields
+			 * @param array  $filters
+			 * @param string $action
+			 * @param array  $filter_results
+			 *  An associative array of arrays which contain 4 values:
+			 *   - the name of the filter (string)
+			 *   - the status (boolean),
+			 *   - the message (string)
+			 *   - an associative array of additional attributes to add to the filter element.
+			 */
+			Symphony::ExtensionManager()->notifyMembers( 'SE_CommitFilter', '*', array(
+				'entry'          => $entry,
+				'fields'         => $fields,
+				'filters'        => $filters,
+				'action'         => $action,
+				'filter_results' => &$filter_results,
+			) );
+
+			if( is_array( $filter_results ) && !empty($filter_results) ){
+				foreach($filter_results as $fr){
+					list($name, $status, $message, $attributes) = $fr;
+
+					$result->appendChild(
+						$this->filtersBuildElement( $name, $status, $message, $attributes )
+					);
+				}
+			}
+		}
+
+		/**
+		 * This method will construct XML that represents the result of
+		 * an Event filter.
+		 *
+		 * @param string            $name
+		 *  The name of the filter
+		 * @param string            $status
+		 * @param XMLElement|string $message
+		 *  Optionally, an XMLElement or string to be appended to this
+		 *  `<filter>` element. XMLElement allows for more complex return
+		 *  types.
+		 * @param array             $attributes
+		 *  An associative array of additional attributes to add to this
+		 *  `<filter>` element
+		 *
+		 * @return XMLElement
+		 */
+		private function filtersBuildElement($name, $status, $message = null, array $attributes = null){
+			$filter = new XMLElement('filter', (!$message || is_object( $message ) ? null : $message));
+
+			if( $message instanceof XMLElement ){
+				$filter->appendChild( $message );
+			}
+
+			$attrs = array('name' => $name, 'status' => $status ? 'passed' : 'failed');
+
+			if( !is_array( $attributes ) ){
+				$attributes = array();
+			}
+
+			$filter->setAttributeArray( array_replace_recursive( $attributes, $attrs ) );
+
+			return $filter;
 		}
 
 	}
