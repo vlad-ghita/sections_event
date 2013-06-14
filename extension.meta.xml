@@ -22,13 +22,13 @@
 	</authors>
 
 	<dependencies>
-		<dependency version="0.5">exsl_function_manager</dependency>
+		<dependency version="0.6">exsl_function_manager</dependency>
 		<dependency version="1.2">members</dependency>
 	</dependencies>
 
 	<releases>
 		<release version="2.0" date="2013-06-14" min="2.3"><![CDATA[
-			* PHP: Requires at least PHP 5.3.0, Members extension [v1.2] and EXSL Function Manager [v0.5].
+			* PHP: Requires at least PHP 5.3.0, Members extension [v1.2] and EXSL Function Manager [v0.6].
 			* PHP: Added permission access control at Section level and Field level.
 			* PHP: Actions supported on entries: Create, Edit, Delete.
 			* PHP: Dropped compatibility with classic Symphony Section Events. Fires custom delegates now.

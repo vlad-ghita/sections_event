@@ -264,9 +264,13 @@
 		private function validateDependencies(){
 			$result = true;
 
+			// members installed
 			$members = ExtensionManager::fetchStatus( array('handle' => 'members') );
-
 			$result = $result && ($members[0] === EXTENSION_ENABLED);
+
+			// exsl function manager installed
+			$efm = ExtensionManager::fetchStatus( array('handle' => 'exsl_function_manager') );
+			$result = $result && ($efm[0] === EXTENSION_ENABLED);
 
 			$this->setValidDependencies( $result );
 		}

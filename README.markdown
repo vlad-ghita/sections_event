@@ -6,7 +6,7 @@ If you ever had to submit data from Frontend to more than one section and those 
 
 Using this approach, you can set those relations right from XSLT and they will be handled on-the-fly thus no more customizations being required.
 
-As of version 2.0, the event supports Create, Edit and Delete actions on entry data. Permissions are handled in-house (@see Managing permissions). 
+As of version 2.0, the event supports Create, Edit and Delete actions on entry data. Permissions are handled in-house (@see Managing permissions).
 
 
 
@@ -27,6 +27,12 @@ For change log see [extension.meta.xml](https://github.com/vlad-ghita/sections_e
 
 
 ## Installation
+
+### Requirements
+
+- PHP 5.3.
+- [EXSL Function Manager](http://symphonyextensions.com/extensions/exsl_function_manager/) extension, at least v0.6.
+- [Members](http://symphonyextensions.com/extensions/exsl_function_manager/) extension, at least v1.2.
 
 Installation as usual.
 
