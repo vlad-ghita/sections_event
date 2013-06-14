@@ -32,7 +32,7 @@ For change log see [extension.meta.xml](https://github.com/vlad-ghita/sections_e
 
 - PHP 5.3.
 - [EXSL Function Manager](http://symphonyextensions.com/extensions/exsl_function_manager/) extension, at least v0.6.
-- [Members](http://symphonyextensions.com/extensions/exsl_function_manager/) extension, at least v1.2.
+- [Members](http://symphonyextensions.com/extensions/members/) extension, at least v1.2.
 
 Installation as usual.
 
