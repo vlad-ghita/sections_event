@@ -21,11 +21,15 @@
 
 
 	<xsl:import href="sform.control.checkbox.xsl"/>
-	<xsl:import href="sform.control.input.xsl"/>
 	<xsl:import href="sform.control.input-entry-action.xsl"/>
 	<xsl:import href="sform.control.input-system-id.xsl"/>
+	<xsl:import href="sform.control.input.xsl"/>
 	<xsl:import href="sform.control.label.xsl"/>
 	<xsl:import href="sform.control.radio.xsl"/>
+	<xsl:import href="sform.control.select-base.xsl"/>
+	<xsl:import href="sform.control.select-days.xsl"/>
+	<xsl:import href="sform.control.select-months.xsl"/>
+	<xsl:import href="sform.control.select-years.xsl"/>
 	<xsl:import href="sform.control.select.xsl"/>
 	<xsl:import href="sform.control.textarea.xsl"/>
 	<xsl:import href="sform.validation.xsl"/>

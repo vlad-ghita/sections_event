@@ -90,6 +90,19 @@
 			return SE_Permissions::LEVEL_NONE;
 		}
 
+		/**
+		 * Get current member role ID. From cache !!!
+		 *
+		 * @return int
+		 */
+		final public function memberGetRoleId(){
+			if( $this->role_id === null ){
+				$this->role_id = $this->memberDetermineRoleId();
+			}
+
+			return $this->role_id;
+		}
+
 
 
 		/*------------------------------------------------------------------------------------------------*/
@@ -115,19 +128,6 @@
 			$crt_level = $this->getLevel( $res_id, $action );
 
 			return $crt_level >= $target_level;
-		}
-
-		/**
-		 * Get current member role ID. From cache !!!
-		 *
-		 * @return int
-		 */
-		final protected function memberGetRoleId(){
-			if( $this->role_id === null ){
-				$this->role_id = $this->memberDetermineRoleId();
-			}
-
-			return $this->role_id;
 		}
 
 		/**

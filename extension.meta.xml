@@ -27,6 +27,14 @@
 	</dependencies>
 
 	<releases>
+		<release version="2.1" date="2013-06-19" min="2.3"><![CDATA[
+			* PHP: Augmented SectionControl class with new helpers.
+			* PHP: Refactored permission level determination algorithm to better reflect ownership for entries.
+			* PHP: Added an EFN function to get permission level for a resource.
+			* XSLT: Fixed error in permissions example.
+			* XSLT: Added example for permission level function.
+			* XSLT: Fixed sform:label `for` attribute overriding
+		]]></release>
 		<release version="2.0" date="2013-06-14" min="2.3"><![CDATA[
 			* PHP: Requires at least PHP 5.3.0, Members extension [v1.2] and EXSL Function Manager [v0.6].
 			* PHP: Added permission access control at Section level and Field level.

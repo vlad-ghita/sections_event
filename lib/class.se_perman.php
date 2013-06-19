@@ -62,25 +62,20 @@
 
 
 		/*------------------------------------------------------------------------------------------------*/
-		/*  XSL Functions. Don't use them :)  */
+		/*  Functions for XSL usage only :)  */
 		/*------------------------------------------------------------------------------------------------*/
 
-		/**
-		 * Must set the parameters b/c XSL functions need a fixed number of arguments.
-		 *
-		 * @param $p1
-		 * @param $p2
-		 * @param $p3
-		 * @param $p4
-		 * @param $p5
-		 *
-		 * @return int
-		 */
-		public static function control_check($p1, $p2, $p3, $p4, $p5){
-			return self::instance()->xslCallbackHandler( __FUNCTION__, func_get_args() ) ? 1 : 0;
+		public static function control_check($res_type, $p1, $p2, $p3, $p4){
+			// Must set the parameters b/c XSL functions need a fixed number of arguments.
+			return self::instance()->efnCallbackHandler( __FUNCTION__, func_get_args() ) ? 1 : 0;
 		}
 
-		private function xslCallbackHandler($fn, $args){
+		public static function control_getLevel($res_type, $res_id, $action){
+			// Must set the parameters b/c XSL functions need a fixed number of arguments.
+			return self::instance()->efnCallbackHandler( __FUNCTION__, func_get_args() );
+		}
+
+		private function efnCallbackHandler($fn, $args){
 			// can't be empty
 			if( !is_array( $args ) || empty($args) ){
 				return null;
@@ -92,7 +87,7 @@
 			// these are the type and the method
 			list($type, $method) = explode( '_', strtolower( $fn ) );
 
-			// fetch correct type object
+			// fetch correct object
 			$object = $this->getObject( $res, $type );
 
 			// $obj->$method($args[0], $args[1], ...)

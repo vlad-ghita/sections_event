@@ -1,8 +1,5 @@
 <?php
 
-	function my_function($string_in){
-		return 'Hello '. $string_in;
-	}
 
 
 	require_once( EXTENSIONS.'/sections_event/lib/class.se_perman.php' );
@@ -164,7 +161,13 @@
 			$context['manager']->addFunction(
 				'SE_PerMan::control_check',
 				'http://xanderadvertising.com/functions',
-				'check'
+				'controlCheck'
+			);
+
+			$context['manager']->addFunction(
+				'SE_PerMan::control_getLevel',
+				'http://xanderadvertising.com/functions',
+				'controlGetLevel'
 			);
 		}
 

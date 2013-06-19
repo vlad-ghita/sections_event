@@ -31,13 +31,44 @@
 			</xsl:if>
 	-->
 	<func:function name="utils:permCheck">
-		<xsl:param name="res"/>
+		<xsl:param name="res_type"/>
 		<xsl:param name="res_id"/>
 		<xsl:param name="action"/>
 
 		<func:result>
 			<!-- Call Sections Event permission function through EXSL Function Manager-->
-			<xsl:value-of select="permissions:check($res, string($res_id), string($action))"/>
+			<xsl:value-of select="permissions:controlCheck(string($res_type), string($res_id), string($action))"/>
+		</func:result>
+	</func:function>
+
+
+
+
+	<!--
+		Get permission level for resource.
+
+		@param res_type - can be "section | event"
+		@param res_id - resource ID
+		@param action - see global actions for possible values
+
+		@return
+			0 = NONE
+			1 = OWN
+			2 = ALL
+
+		@example
+
+			Return permission level for section with ID = 1 for Action CREATE
+			<xsl:value-of select="utils:permGetLevel('section', 1, /data/se-permissions/actions/create)"/>
+	-->
+	<func:function name="utils:permGetLevel">
+		<xsl:param name="res_type"/>
+		<xsl:param name="res_id"/>
+		<xsl:param name="action"/>
+
+		<func:result>
+			<!-- Call Sections Event permission function through EXSL Function Manager-->
+			<xsl:value-of select="permissions:controlGetLevel(string($res_type), string($res_id), string($action))"/>
 		</func:result>
 	</func:function>
 

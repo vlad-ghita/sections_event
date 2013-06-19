@@ -86,6 +86,14 @@ Here's an example of a full XSL Page for checking permissions:
             <xsl:if test="utils:permCheck('section', 3, $actions/delete) = 0">
                 <p>You are not allowed to delete entries in Section #3.</p>
             </xsl:if>
+
+            <!-- Returns the permission level set for current logged in Role for this Resource for this action -->
+            <!--
+                0 = NONE
+                1 = OWN
+                2 = ALL
+            -->
+            <xsl:value-of select="utils:permGetLevel('section', 3, $actions/edit)"/>
         </xsl:template>
 
 

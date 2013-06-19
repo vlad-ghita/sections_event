@@ -957,7 +957,7 @@
 		 *
 		 * @return boolean
 		 */
-		private function filtersProcessPrepare(XMLElement $result, Entry $entry, array $fields, array $original_fields, array $filters, $action){
+		private function filtersProcessPrepare(XMLElement $result, Entry $entry, array &$fields, array $original_fields, array $filters, $action){
 			$can_proceed    = true;
 			$filter_results = array();
 
@@ -981,7 +981,7 @@
 			 */
 			Symphony::ExtensionManager()->notifyMembers( 'SE_PrepareFilter', '*', array(
 				'entry'           => $entry,
-				'fields'          => $fields,
+				'fields'          => &$fields,
 				'original_fields' => $original_fields,
 				'filters'         => $filters,
 				'action'          => $action,
