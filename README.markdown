@@ -74,6 +74,7 @@ Here's an example of a full XSL Page for checking permissions:
 
         <xsl:template match="/">
             <xsl:variable name="actions" select="/data/se-permissions/actions"/>
+            <xsl:variable name="levels" select="/data/se-permissions/levels"/>
 
             <!-- Returns 1 if current member can Create entries in Section with ID = 1 -->
             <!-- Returns 0 otherwise -->
@@ -88,12 +89,11 @@ Here's an example of a full XSL Page for checking permissions:
             </xsl:if>
 
             <!-- Returns the permission level set for current logged in Role for this Resource for this action -->
-            <!--
-                0 = NONE
-                1 = OWN
-                2 = ALL
-            -->
             <xsl:value-of select="utils:permGetLevel('section', 3, $actions/edit)"/>
+
+            <xsl:if test="utils:permGetLevel('section', 3, $actions/edit) = $levels/own">
+                <p>Current logged in Member is allowed to edit his own entries from section with ID = 3.</p>
+            </xsl:if>
         </xsl:template>
 
 

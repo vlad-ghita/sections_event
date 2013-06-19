@@ -27,6 +27,10 @@
 	</dependencies>
 
 	<releases>
+		<release version="2.1.1" date="2013-06-19" min="2.3"><![CDATA[
+			* PHP: Added permission levels to `SE : Permissions` datasource output.
+			* XSLT: Updated examples.
+		]]></release>
 		<release version="2.1" date="2013-06-19" min="2.3"><![CDATA[
 			* PHP: Augmented SectionControl class with new helpers.
 			* PHP: Refactored permission level determination algorithm to better reflect ownership for entries.

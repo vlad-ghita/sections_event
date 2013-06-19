@@ -51,10 +51,7 @@
 		@param res_id - resource ID
 		@param action - see global actions for possible values
 
-		@return
-			0 = NONE
-			1 = OWN
-			2 = ALL
+		@return any value from /data/se-permissions/levels/*
 
 		@example
 

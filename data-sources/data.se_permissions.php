@@ -12,13 +12,25 @@
 		public function about(){
 			return array(
 				'name'        => 'SE : Permissions',
-				'description' => 'It supplier information about permissions. See result for actual data.'
+				'description' => 'It supplies information about permissions. See result for actual data.'
 			);
 		}
 
 		public function execute(array &$param_pool = null){
 			$result = new XMLElement('se-permissions');
 
+			$result->appendChild(
+				$this->buildActions()
+			);
+
+			$result->appendChild(
+				$this->buildLevels()
+			);
+
+			return $result;
+		}
+
+		private function buildActions(){
 			$actions = array(
 				SE_Permissions::ACTION_VIEW,
 				SE_Permissions::ACTION_CREATE,
@@ -26,15 +38,31 @@
 				SE_Permissions::ACTION_DELETE,
 			);
 
-			$xml_actions = new XMLelement('actions');
+			$result = new XMLelement('actions');
 
 			foreach( $actions as $action ){
-				$xml_actions->appendChild(
+				$result->appendChild(
 					new XMLelement($action, $action)
 				);
 			}
 
-			$result->appendChild($xml_actions);
+			return $result;
+		}
+
+		private function buildLevels(){
+			$levels = array(
+				SE_Permissions::LEVEL_NONE => 'none',
+				SE_Permissions::LEVEL_OWN => 'own',
+				SE_Permissions::LEVEL_ALL => 'all',
+			);
+
+			$result = new XMLelement('levels');
+
+			foreach( $levels as $level_num => $level_text ){
+				$result->appendChild(
+					new XMLelement($level_text, $level_num)
+				);
+			}
 
 			return $result;
 		}
