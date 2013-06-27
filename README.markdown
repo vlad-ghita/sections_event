@@ -591,3 +591,55 @@ result:
             </form>
         </body>
     </html>
+
+
+#### Example 6. Editing an entry in `Books` section
+
+    <!-- Enter System ID for this book -->
+    <xsl:call-template name="sform:input">
+        <xsl:with-param name="section" select="'books'"/>
+        <xsl:with-param name="handle" select="'__system-id'"/>
+        <xsl:with-param name="value" select="'1632'"/>
+        <xsl:with-param name="attributes">
+            <type>hidden</type>
+        </xsl:with-param>
+    </xsl:call-template>
+
+    <xsl:call-template name="sform:input">
+        <xsl:with-param name="section" select="'books'"/>
+        <xsl:with-param name="handle" select="'title'"/>
+        <xsl:with-param name="value" select="'Encyclopedia'"/>
+    </xsl:call-template>
+
+result:
+
+    <input type="hidden" value="1632" id="sections_books___system-id" name="sections[books][__system-id]">
+    <input type="text" value="Wikipedia" id="sections_books_title" name="sections[books][title]">
+
+
+#### Example 7. Deleting an entry from `Books` section
+
+    <!-- Enter System ID for this book -->
+    <xsl:call-template name="sform:input">
+        <xsl:with-param name="section" select="'books'"/>
+        <xsl:with-param name="handle" select="'__system-id'"/>
+        <xsl:with-param name="value" select="'1632'"/>
+        <xsl:with-param name="attributes">
+            <type>hidden</type>
+        </xsl:with-param>
+    </xsl:call-template>
+    
+    <!-- Specify the delete action -->
+    <xsl:call-template name="sform:input">
+        <xsl:with-param name="section" select="'books'"/>
+        <xsl:with-param name="handle" select="'__action'"/>
+        <xsl:with-param name="value" select="'delete'"/>
+        <xsl:with-param name="attributes">
+            <type>hidden</type>
+        </xsl:with-param>
+    </xsl:call-template>
+
+result:
+
+    <input type="hidden" value="1632" id="sections_books___system-id" name="sections[books][__system-id]">
+    <input type="hidden" value="delete" id="sections_books___action" name="sections[books][__action]">
