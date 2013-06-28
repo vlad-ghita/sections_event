@@ -2,7 +2,7 @@
 
 
 
-	require_once( EXTENSIONS.'/sections_event/lib/class.se_perman.php' );
+	require_once(EXTENSIONS.'/sections_event/lib/class.se_perman.php');
 
 
 
@@ -132,7 +132,7 @@
 				),
 
 				array(
-					'page' => '/frontend/',
+					'page'     => '/frontend/',
 					'delegate' => 'ManageEXSLFunctions',
 					'callback' => 'dManageEXSLFunctions'
 				),
@@ -155,6 +155,12 @@
 		public function dSE_CommitFilter($context){
 			// simulate ETM
 			$this->triggerETM( $context );
+
+			// simulate Reflection
+			$this->triggerReflection( $context );
+
+			// simulate Multilingual Entry URL
+			$this->triggerMultilingualEntryUrl( $context );
 		}
 
 		public function dManageEXSLFunctions($context){
@@ -197,24 +203,56 @@
 			/** @var $etm Extension_Email_Template_Manager */
 			$etm = ExtensionManager::getInstance( 'email_template_manager' );
 
-			require_once( EXTENSIONS.'/sections_event/lib/class.etmsectionsevent.php' );
+			require_once(EXTENSIONS.'/sections_event/lib/class.etmsectionsevent.php');
 
 			// simulate ETM context
-			$event = new ETMSectionsEvent();
+			$event                = new ETMSectionsEvent();
 			$event->eParamFILTERS = $context['filters'];
 
 			$errors = array();
 
 			$etm_context = array(
-				'entry' => $context['entry'],
+				'entry'  => $context['entry'],
 				'fields' => $context['fields'],
-				'event' => $event,
+				'event'  => $event,
 				'errors' => &$errors
 			);
 
-			$etm->eventFinalSaveFilter($etm_context);
+			$etm->eventFinalSaveFilter( $etm_context );
 
 			$context['filter_results'] = $errors;
+		}
+
+		private function triggerReflection($context){
+			$reflection_ext_status = ExtensionManager::fetchStatus( array('handle' => 'reflectionfield') );
+			if( $reflection_ext_status[0] !== EXTENSION_ENABLED ){
+				return;
+			}
+
+			/** @var $reflection Extension_ReflectionField */
+			$reflection = ExtensionManager::getInstance( 'reflectionfield' );
+
+			$reflection_context = array(
+				'entry' => $context['entry']
+			);
+
+			$reflection->compileFrontendFields( $reflection_context );
+		}
+
+		private function triggerMultilingualEntryUrl($context){
+			$meu_ext_status = ExtensionManager::fetchStatus( array('handle' => 'multilingual_entry_url') );
+			if( $meu_ext_status[0] !== EXTENSION_ENABLED ){
+				return;
+			}
+
+			/** @var $reflection Extension_ReflectionField */
+			$reflection = ExtensionManager::getInstance( 'multilingual_entry_url' );
+
+			$meu_context = array(
+				'entry' => $context['entry']
+			);
+
+			$reflection->compileFrontendFields( $meu_context );
 		}
 
 		/**
@@ -269,10 +307,10 @@
 
 			// members installed
 			$members = ExtensionManager::fetchStatus( array('handle' => 'members') );
-			$result = $result && ($members[0] === EXTENSION_ENABLED);
+			$result  = $result && ($members[0] === EXTENSION_ENABLED);
 
 			// exsl function manager installed
-			$efm = ExtensionManager::fetchStatus( array('handle' => 'exsl_function_manager') );
+			$efm    = ExtensionManager::fetchStatus( array('handle' => 'exsl_function_manager') );
 			$result = $result && ($efm[0] === EXTENSION_ENABLED);
 
 			$this->setValidDependencies( $result );

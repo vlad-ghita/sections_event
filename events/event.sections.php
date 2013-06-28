@@ -63,24 +63,26 @@
 		 * @return XMLElement
 		 */
 		private function execute(){
-			$sections_post = $_REQUEST['sections'];
+			$request = $this->getInputData( $_REQUEST );
+
+			$sections_input = $request['sections'];
 
 			// store the redirect
 			$redirect = '';
-			if( isset($sections_post['__redirect']) ){
-				$redirect = $sections_post['__redirect'];
-				unset($sections_post['__redirect']);
+			if( isset($sections_input['__redirect']) ){
+				$redirect = $sections_input['__redirect'];
+				unset($sections_input['__redirect']);
 			}
 
-			if( !is_array( $sections_post ) || empty($sections_post) ){
+			if( !is_array( $sections_input ) || empty($sections_input) ){
 				return null;
 			}
 
-			$this->sections = $sections_post;
+			$this->sections = $sections_input;
 
 
 			/* 1. Prepare data for processing. Fire Sections_Event_PrepareFilter */
-			$sections_prepare = $this->sectionsPrepare( $sections_post );
+			$sections_prepare = $this->sectionsPrepare( $sections_input );
 			if( $this->errorExists() ){
 				return $this->buildOutput( $sections_prepare );
 			}
@@ -245,6 +247,9 @@
 			// determine entry_id
 			if( isset($original_fields['__system-id']) ){
 				$entry_id = $original_fields['__system-id'];
+				if( is_array( $entry_id ) ){
+					$entry_id = current( $entry_id );
+				}
 				unset($original_fields['__system-id']);
 			}
 
@@ -260,13 +265,13 @@
 				$action = SE_Permissions::ACTION_CREATE;
 			}
 
-			$fields = $this->getPostData( $section_handle, $position, $original_fields );
+			$fields = $original_fields;
 
 			$res_entry = new XMLElement('entry', null, array('action' => $action));
 			$done      = false;
 			$entry     = null;
 
-			// get the Entry object
+			// validate $action & get the Entry object
 			switch( $action ){
 
 				case SE_Permissions::ACTION_CREATE:
@@ -296,7 +301,7 @@
 			$res_filters = new XMLElement('filters');
 
 			if( !$done ){
-				if( !$this->filtersProcessPrepare( $res_filters, $entry, $fields, $original_fields, $filters, $action ) ){
+				if( !$this->filtersProcessPrepare( $res_filters, $section_handle, $entry, $fields, $original_fields, $filters, $action ) ){
 					$this->error = true;
 					$this->resultEntry( $res_entry, 'error' );
 				}
@@ -306,7 +311,7 @@
 				'action'      => $action,
 				'id'          => $entry_id,
 				'entry'       => $entry,
-				'orig_fields' => $fields,
+				'orig_fields' => $original_fields,
 				'fields'      => $fields,
 				'filters'     => $filters,
 				'done'        => $done,
@@ -867,21 +872,19 @@
 		}
 
 		/**
-		 * Similar to @see General::getPostData(), but adapted to given structure.
+		 * Similar to @see General::getPostData(), but targets $_REQUEST instead of $_POST.
 		 *
-		 * @param $handle   - section handle
-		 * @param $position - entry position
-		 * @param $fields   - entry fields
+		 * @param $src - $_POST | $_GET | $_REQUEST - defaults to $_REQUEST
 		 */
-		private function getPostData($handle, $position, $fields){
+		private function getInputData($src = null){
 			if( !function_exists( 'merge_file_post_data' ) ){
-				function merge_file_post_data($type, array $file, &$fields){
+				function merge_file_post_data($type, array $file, &$src){
 					foreach($file as $key => $value){
-						if( !isset($fields[$key]) ) $fields[$key] = array();
+						if( !isset($src[$key]) ) $src[$key] = array();
 						if( is_array( $value ) ){
-							merge_file_post_data( $type, $value, $fields[$key] );
+							merge_file_post_data( $type, $value, $src[$key] );
 						}
-						else $fields[$key][$type] = $value;
+						else $src[$key][$type] = $value;
 					}
 				}
 			}
@@ -894,32 +897,24 @@
 				'size'     => array()
 			);
 
-			if( is_array( $_FILES['sections'] ) && !empty($_FILES['sections']) ){
-				foreach($_FILES['sections'] as $key_a => $data_a){
+			if( $src === null ){
+				$src = $_REQUEST;
+			}
+
+			if( is_array( $_FILES ) && !empty($_FILES) ){
+				foreach($_FILES as $key_a => $data_a){
 					if( !is_array( $data_a ) ) continue;
-
-					reset( $data_a[$handle] );
-
-					// indexed entries
-					if( is_numeric( key( $data_a[$handle] ) ) ){
-						$data_c = $data_a[$handle][$position];
-					}
-					// non-indexed entries
-					else{
-						$data_c = $data_a[$handle];
-					}
-
-					foreach($data_c as $key_b => $data_b){
-						$files[$key_a][$key_b] = $data_b;
+					foreach($data_a as $key_b => $data_b){
+						$files[$key_b][$key_a] = $data_b;
 					}
 				}
 			}
 
 			foreach($files as $type => $data){
-				merge_file_post_data( $type, $data, $fields );
+				merge_file_post_data( $type, $data, $src );
 			}
 
-			return $fields;
+			return $src['sections'];
 		}
 
 		/**
@@ -949,6 +944,7 @@
 		 * Processes all extensions attached to the `SE_PrepareFilter` delegate
 		 *
 		 * @param XMLElement $result
+		 * @param string     $section_handle
 		 * @param Entry      $entry
 		 * @param array      $fields
 		 * @param array      $original_fields
@@ -957,7 +953,7 @@
 		 *
 		 * @return boolean
 		 */
-		private function filtersProcessPrepare(XMLElement $result, Entry $entry, array &$fields, array $original_fields, array $filters, $action){
+		private function filtersProcessPrepare(XMLElement $result, $section_handle, Entry $entry, array &$fields, array $original_fields, array $filters, $action){
 			$can_proceed    = true;
 			$filter_results = array();
 
@@ -968,18 +964,19 @@
 			 * @delegate SE_PrepareFilter
 			 *
 			 * @param Entry  $entry
-			 * @param array  $fields - the fields including $_FILES
+			 * @param array  $fields          - the fields including $_FILES
 			 * @param array  $original_fields - the fields without $_FILES
 			 * @param array  $filters
 			 * @param string $action
 			 * @param array  $filter_results
-			 *  An associative array of arrays which contain 4 values:
+			 *                                An associative array of arrays which contain 4 values:
 			 *   - the name of the filter (string)
 			 *   - the status (boolean),
 			 *   - the message (string)
 			 *   - an associative array of additional attributes to add to the filter element.
 			 */
 			Symphony::ExtensionManager()->notifyMembers( 'SE_PrepareFilter', '*', array(
+				'section_handle'  => $section_handle,
 				'entry'           => $entry,
 				'fields'          => &$fields,
 				'original_fields' => $original_fields,

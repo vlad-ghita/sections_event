@@ -80,6 +80,8 @@
 		/*------------------------------------------------------------------------------------------------*/
 
 		public function __viewEdit(){
+			$this->doTheEdit();
+
 			if( !$role_id = $this->_context[1] ){
 				redirect( Extension_Sections_Event::baseURL().'permissions/' );
 			}
@@ -153,7 +155,7 @@
 		private function buildSectionPermissions($role_id, $permissions){
 			$div = new XMLElement('div', null, array('class' => 'sections'));
 
-			$actions = SE_PerMan::getControl('section')->getAllowedActions();
+			$actions = SE_PerMan::getControl( 'section' )->getAllowedActions();
 
 			$levels = array(
 				SE_Permissions::LEVEL_NONE,
@@ -177,7 +179,7 @@
 				$options = array();
 
 				foreach($levels as $level){
-					$options[] = array($level, false, $level_map[$level] );
+					$options[] = array($level, false, $level_map[$level]);
 				}
 
 				$select = Widget::Select( "toggle-sections-$action", $options );
@@ -278,7 +280,7 @@
 		}
 
 		private function buildSectionFieldsTable($role_id, $sid, $permissions){
-			$actions = SE_PerMan::getControl('field')->getAllowedActions();
+			$actions = SE_PerMan::getControl( 'field' )->getAllowedActions();
 
 			$levels = array(
 				SE_Permissions::LEVEL_NONE,
@@ -299,7 +301,7 @@
 				$options = array();
 
 				foreach($levels as $level){
-					$options[] = array($level, false, $level_map[$level] );
+					$options[] = array($level, false, $level_map[$level]);
 				}
 
 				$select = Widget::Select( "toggle-fields-$sid-$action", $options );
@@ -375,6 +377,42 @@
 			return $div;
 		}
 
+		private function doTheEdit(){
+			// if permission data exists, it means it wasn't processed due to
+			// a "max_input_vars" limitation. By pass it and re-process
+			if( isset($_POST['permissions']) ){
+				$post_data   = explode( "&", file_get_contents( 'php://input' ) );
+				$parsed_data = array();
+
+				foreach($post_data as $post_datum){
+					$pair = explode( "=", $post_datum );
+
+					$parsed_data[urldecode( $pair[0] )] = urldecode( $pair[1] );
+				}
+
+				$new_post = array();
+
+				foreach($parsed_data as $key => $value){
+					$keys = preg_split( '/(?:\[|\])+/', $key, -1, PREG_SPLIT_NO_EMPTY );
+
+					$this->insertValueByKeys( $new_post, $keys, $value );
+				}
+
+				$_POST = $new_post;
+
+				$this->__actionEdit();
+			}
+		}
+
+		private function insertValueByKeys(&$array, $keys, $value){
+			if( !empty($keys) ){
+				$this->insertValueByKeys( $array[array_shift( $keys )], $keys, $value );
+			}
+			else{
+				$array = $value;
+			}
+		}
+
 		public function __actionEdit(){
 			if( array_key_exists( 'save', $_POST['action'] ) ){
 				$permissions = $_POST['permissions'];
@@ -388,6 +426,10 @@
 					throw new SymphonyErrorPage(__( 'The role you requested to edit does not exist.' ), __( 'Role not found' ), 'error');
 				}
 
+				// sanitize values
+				$this->sanitizeSections( $permissions['sections'] );
+				$this->sanitizeFields( $permissions['fields'] );
+
 				if(
 					SE_PerMan::getCrud( 'section' )->updateAll( $role_id, $permissions['sections'] )
 					&& SE_PerMan::getCrud( 'field' )->updateAll( $role_id, $permissions['fields'] )
@@ -396,4 +438,72 @@
 				}
 			}
 		}
+
+		private function sanitizeSections(&$sections){
+			if( !is_array( $sections ) ){
+				return;
+			}
+
+			$actions = SE_PerMan::getControl( 'section' )->getAllowedActions();
+
+			$levels = array(
+				SE_Permissions::LEVEL_NONE,
+				SE_Permissions::LEVEL_OWN,
+				SE_Permissions::LEVEL_ALL,
+			);
+
+			foreach($sections as $sid => $data){
+				try{
+					if( count( $data ) != 6 ){
+						throw new Exception('', 115);
+					}
+					if( !RoleManager::fetch( $data['role_id'] ) instanceof Role ){
+						throw new Exception('', 115);
+					}
+					foreach($actions as $action){
+						if( !in_array( $data[$action], $levels ) ){
+							throw new Exception('', 115);
+						}
+					}
+				} catch( Exception $e ){
+					if( $e->getCode() == 115 ){
+						unset($sections[$sid]);
+					}
+				}
+			}
+		}
+
+		private function sanitizeFields(&$fields){
+			if( !is_array( $fields ) ){
+				return;
+			}
+
+			$actions = SE_PerMan::getControl( 'field' )->getAllowedActions();
+
+			$levels = array(
+				SE_Permissions::LEVEL_NONE,
+				SE_Permissions::LEVEL_ALL,
+			);
+
+			foreach($fields as $fid => $data){
+				try{
+					if( count( $data ) != 4 ){
+						throw new Exception('', 115);
+					}
+					if( !RoleManager::fetch( $data['role_id'] ) instanceof Role ){
+						throw new Exception('', 115);
+					}
+					foreach($actions as $action){
+						if( !in_array( $data[$action], $levels ) ){
+							throw new Exception('', 115);
+						}
+					}
+				} catch( Exception $e ){
+					if( $e->getCode() == 115 ){
+						unset($fields[$fid]);
+					}
+				}
+			}
+		}
+
 	}

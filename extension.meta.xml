@@ -27,6 +27,12 @@
 	</dependencies>
 
 	<releases>
+		<release version="2.2" date="2013-06-28" min="2.3"><![CDATA[
+			* PHP: Fixed regression bug like #2.
+			* PHP: Added data integrity safe checks when saving permissions.
+			* PHP: Added internal processing to bypass `max_input_vars` PHP setting when saving permissions.
+			* PHP: Added delegate support for `Reflection` and `Multilingual Entry Url` extensions
+		]]></release>
 		<release version="2.1.1" date="2013-06-19" min="2.3"><![CDATA[
 			* PHP: Added permission levels to `SE : Permissions` datasource output.
 			* XSLT: Updated examples.
