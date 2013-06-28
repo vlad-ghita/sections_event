@@ -875,6 +875,8 @@
 		 * Similar to @see General::getPostData(), but targets $_REQUEST instead of $_POST.
 		 *
 		 * @param $src - $_POST | $_GET | $_REQUEST - defaults to $_REQUEST
+		 *
+		 * @return array - merged input data
 		 */
 		private function getInputData($src = null){
 			if( !function_exists( 'merge_file_post_data' ) ){
@@ -914,7 +916,7 @@
 				merge_file_post_data( $type, $data, $src );
 			}
 
-			return $src['sections'];
+			return $src;
 		}
 
 		/**
