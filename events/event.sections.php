@@ -573,27 +573,32 @@
 
 				foreach($section['entries'] as &$entry){
 
-					$old_fields = $entry['fields'];
-
-					foreach($entry['fields'] as $field => $value){
+					foreach($entry['fields'] as $f_handle => $value){
 						$new_value = $this->sectionsReplaceGetNewValue( $value );
 
-						if( $new_value !== $value ){
+						if( $new_value === $value ){
+							continue;
+						}
 
-							// set the relation for post_back_values
-							$entry['fields'][$field] = $new_value;
+						/** @var $field Field */
+						$f_id  = FieldManager::fetchFieldIDFromElementName( $f_handle, $section['id'] );
+						$field = FieldManager::fetch( $f_id );
 
-							// set the relation for DB if Entry exists
-							if( $entry['entry'] instanceof Entry ){
-								$s = $message = null;
+						// skip upload fields b/c on new uploads it gives false replacements
+						if( $field instanceof FieldUpload ){
+							continue;
+						}
 
-								$f_id = FieldManager::fetchFieldIDFromElementName( $field, $section['id'] );
+						// set the relation for post_back_values
+						$entry['fields'][$f_handle] = $new_value;
 
-								/** @var $f Field */
-								$f      = FieldManager::fetch( $f_id );
-								$f_data = $f->processRawFieldData( $new_value, $s, $message, false, $entry['entry']->get( 'id' ) );
-								$entry['entry']->setData( $f_id, $f_data );
-							}
+						// set the relation for DB if Entry exists
+						if( $entry['entry'] instanceof Entry ){
+							$status = $message = null;
+
+							$f_data = $field->processRawFieldData( $new_value, $status, $message, false, $entry['entry']->get( 'id' ) );
+
+							$entry['entry']->setData( $f_id, $f_data );
 						}
 					}
 				}
