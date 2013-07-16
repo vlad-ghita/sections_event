@@ -127,13 +127,25 @@
 			$this->sections   = $sections_replace;
 
 
-			/* 7. Create & Edit. Persist field data to db. Fire Sections_Event_PostSaveFilter */
+			/* 7. Create & Edit. Persist field data to db. Fire Sections_Event_CommitFilter */
 			$sections_commit = $this->sectionsCommit( $sections_replace );
 			if( $this->errorExists() ){
 				$this->rollback( $sections_commit );
 				return $this->buildOutput( $sections_commit );
 			}
 			$this->sections = $sections_commit;
+
+
+			/**
+			 * After all processing is finished. It will contain all internal data from sections.
+			 *
+			 * @delegate SE_FinalFilter
+			 *
+			 * @param array $sections
+			 */
+			Symphony::ExtensionManager()->notifyMembers( 'SE_FinalFilter', '*', array(
+				'sections' => $this->sections
+			) );
 
 
 			// redirect
@@ -253,7 +265,7 @@
 				unset($original_fields['__system-id']);
 			}
 
-			// // determine action
+			// determine action
 			if( isset($original_fields['__action']) ){
 				$action = $original_fields['__action'];
 				unset($original_fields['__action']);
@@ -523,7 +535,9 @@
 				foreach($section['entries'] as &$entry){
 
 					// skip done entries
-					if( $entry['done'] === true ) continue;
+					if( $entry['done'] === true ) {
+						continue;
+					}
 
 					$errors = array();
 
@@ -573,32 +587,30 @@
 
 				foreach($section['entries'] as &$entry){
 
-					foreach($entry['fields'] as $f_handle => $value){
+					// skip done entries
+					if( $entry['done'] === true ) {
+						continue;
+					}
+
+					foreach($entry['fields'] as $field => $value){
 						$new_value = $this->sectionsReplaceGetNewValue( $value );
 
-						if( $new_value === $value ){
-							continue;
-						}
+						if( $new_value !== $value ){
 
-						/** @var $field Field */
-						$f_id  = FieldManager::fetchFieldIDFromElementName( $f_handle, $section['id'] );
-						$field = FieldManager::fetch( $f_id );
+							// set the relation for post_back_values
+							$entry['fields'][$field] = $new_value;
 
-						// skip upload fields b/c on new uploads it gives false replacements
-						if( $field instanceof FieldUpload ){
-							continue;
-						}
+							// set the relation for DB if Entry exists
+							if( $entry['entry'] instanceof Entry ){
+								$s = $message = null;
 
-						// set the relation for post_back_values
-						$entry['fields'][$f_handle] = $new_value;
+								$f_id = FieldManager::fetchFieldIDFromElementName( $field, $section['id'] );
 
-						// set the relation for DB if Entry exists
-						if( $entry['entry'] instanceof Entry ){
-							$status = $message = null;
-
-							$f_data = $field->processRawFieldData( $new_value, $status, $message, false, $entry['entry']->get( 'id' ) );
-
-							$entry['entry']->setData( $f_id, $f_data );
+								/** @var $f Field */
+								$f      = FieldManager::fetch( $f_id );
+								$f_data = $f->processRawFieldData( $new_value, $s, $message, false, $entry['entry']->get( 'id' ) );
+								$entry['entry']->setData( $f_id, $f_data );
+							}
 						}
 					}
 				}
@@ -700,6 +712,11 @@
 
 				foreach($section['entries'] as &$entry){
 
+					// skip done entries
+					if( $entry['done'] === true ) {
+						continue;
+					}
+
 					// Entry is done at this stage
 					$entry['done'] = true;
 
@@ -733,7 +750,7 @@
 
 					$entry['res_entry']->setAttribute( 'id', $entry['entry']->get( 'id' ) );
 
-					$this->filtersProcessCommit( $entry['res_filters'], $entry['entry'], $entry['fields'], $entry['filters'], $entry['action'] );
+					$this->filtersProcessCommit( $entry['res_filters'], $handle, $entry['entry'], $entry['fields'], $entry['filters'], $entry['action'] );
 				}
 			}
 
@@ -1014,12 +1031,13 @@
 		 * Processes all extensions attached to the `SE_CommitFilter` delegate
 		 *
 		 * @param XMLElement $result
+		 * @param string     $section_handle
 		 * @param Entry      $entry
 		 * @param array      $fields
 		 * @param array      $filters
 		 * @param string     $action
 		 */
-		private function filtersProcessCommit(XMLElement $result, Entry $entry, array $fields, array $filters, $action){
+		private function filtersProcessCommit(XMLElement $result, $section_handle, Entry $entry, array $fields, array $filters, $action){
 			$filter_results = array();
 
 			/**
@@ -1028,6 +1046,7 @@
 			 * @delegate SE_CommitFilter
 			 *
 			 * @param Entry  $entry
+			 * @param string $section_handle
 			 * @param array  $fields
 			 * @param array  $filters
 			 * @param string $action
@@ -1040,6 +1059,7 @@
 			 */
 			Symphony::ExtensionManager()->notifyMembers( 'SE_CommitFilter', '*', array(
 				'entry'          => $entry,
+				'section_handle' => $section_handle,
 				'fields'         => $fields,
 				'filters'        => $filters,
 				'action'         => $action,
