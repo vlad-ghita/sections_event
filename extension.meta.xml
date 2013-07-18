@@ -27,6 +27,9 @@
 	</dependencies>
 
 	<releases>
+		<release version="2.3.1" date="2013-07-16" min="2.3"><![CDATA[
+			* PHP: Fixed regression bug like. See #7.
+		]]></release>
 		<release version="2.3" date="2013-07-16" min="2.3"><![CDATA[
 			* PHP: Added more delegates in key processing points.
 			* PHP: Fixed bug where deleted entry data was reintroduced in database.
