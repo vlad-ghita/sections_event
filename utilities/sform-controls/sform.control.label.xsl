@@ -64,28 +64,33 @@
 
 		<xsl:variable name="attribs" select="exsl:node-set($attributes)"/>
 
+		<xsl:variable name="attr_for">
+			<xsl:choose>
+				<xsl:when test="$attribs/for = $sform:null"/>
+				<xsl:when test="$attribs/for != ''">
+					<xsl:value-of select="$attribs/for"/>
+				</xsl:when>
+				<xsl:when test="$handle != ''">
+					<xsl:call-template name="sform:control-id">
+						<xsl:with-param name="name">
+							<xsl:call-template name="sform:control-name">
+								<xsl:with-param name="prefix" select="$prefix"/>
+								<xsl:with-param name="handle" select="$handle"/>
+								<xsl:with-param name="section" select="$section"/>
+								<xsl:with-param name="position" select="$position"/>
+								<xsl:with-param name="suffix" select="$suffix"/>
+							</xsl:call-template>
+						</xsl:with-param>
+					</xsl:call-template>
+				</xsl:when>
+			</xsl:choose>
+		</xsl:variable>
+
 		<xsl:variable name="attrs">
-			<xsl:if test="$handle != ''">
-				<for>
-					<xsl:choose>
-					    <xsl:when test="$attribs/for != ''">
-					        <xsl:value-of select="$attribs/for"/>
-					    </xsl:when>
-					    <xsl:otherwise>
-						    <xsl:call-template name="sform:control-id">
-							    <xsl:with-param name="name">
-								    <xsl:call-template name="sform:control-name">
-									    <xsl:with-param name="prefix" select="$prefix"/>
-									    <xsl:with-param name="handle" select="$handle"/>
-									    <xsl:with-param name="section" select="$section"/>
-									    <xsl:with-param name="position" select="$position"/>
-									    <xsl:with-param name="suffix" select="$suffix"/>
-								    </xsl:call-template>
-							    </xsl:with-param>
-						    </xsl:call-template>
-					    </xsl:otherwise>
-					</xsl:choose>
-				</for>
+			<xsl:if test="$attr_for != ''">
+			    <for>
+				    <xsl:value-of select="$attr_for"/>
+			    </for>
 			</xsl:if>
 
 			<xsl:call-template name="sform:attributes-class">

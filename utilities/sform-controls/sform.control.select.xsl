@@ -45,8 +45,22 @@
 		<xsl:param name="suffix" select="$sform:suffix"/>
 
 		<!-- Validation -->
-		<xsl:param name="interpretation"></xsl:param>
-		<xsl:param name="interpretation-el"></xsl:param>
+		<xsl:param name="interpretation">
+			<xsl:call-template name="sform:validation-interpret">
+				<xsl:with-param name="event" select="$event"/>
+				<xsl:with-param name="prefix" select="$prefix"/>
+				<xsl:with-param name="section" select="$section"/>
+				<xsl:with-param name="position" select="$position"/>
+				<xsl:with-param name="fields-sel">
+					<xsl:call-template name="sform:validation-tpl-sel">
+						<xsl:with-param name="handle" select="$handle"/>
+						<xsl:with-param name="extMode" select="'update'"/>
+						<xsl:with-param name="suffix" select="$suffix"/>
+					</xsl:call-template>
+				</xsl:with-param>
+			</xsl:call-template>
+		</xsl:param>
+		<xsl:param name="interpretation-el" select="exsl:node-set($interpretation)/fields/item[ @handle = $handle ]"/>
 
 		<!-- Element data -->
 		<xsl:param name="value" select="''"/>

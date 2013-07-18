@@ -55,6 +55,9 @@
 		<xsl:param name="success-class" select="'success'"/>
 		<xsl:param name="error-class" select="'error'"/>
 
+		<xsl:param name="wrapper-success-class" select="$success-class"/>
+		<xsl:param name="wrapper-error-class" select="$error-class"/>
+
 		<xsl:param name="main-wrapper" select="'div'"/>
 
 
@@ -124,10 +127,10 @@
 							<xsl:text>validation </xsl:text>
 							<xsl:choose>
 								<xsl:when test="$do-items-with-errors-exist != ''">
-									<xsl:value-of select="$error-class"/>
+									<xsl:value-of select="$wrapper-error-class"/>
 								</xsl:when>
 								<xsl:otherwise>
-									<xsl:value-of select="$success-class"/>
+									<xsl:value-of select="$wrapper-success-class"/>
 								</xsl:otherwise>
 							</xsl:choose>
 						</xsl:attribute>

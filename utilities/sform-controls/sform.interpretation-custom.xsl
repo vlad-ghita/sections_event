@@ -37,8 +37,10 @@
 		-->
 	<xsl:template name="sform:formi">
 		<!-- Identification -->
+		<xsl:param name="event" select="$sform:event"/>
+		<xsl:param name="prefix" select="$sform:prefix"/>
 		<xsl:param name="section" select="$sform:section"/>
-		<xsl:param name="position" select="$sform:events/sections/*[1]/entry[1]/@position"/>
+		<xsl:param name="position" select="$sform:position"/>
 
 		<!-- Entry -->
 		<xsl:param name="entry-selection" select="$sform:STATUS_ANY"/>
@@ -84,9 +86,6 @@
 				<xsl:with-param name="msg" select="'Field is invalid.'"/>
 			</xsl:call-template>
 		</xsl:param>
-
-		<xsl:variable name="event" select="$sform:event"/>
-		<xsl:variable name="prefix" select="$sform:prefix"/>
 
 		<!-- Get entry data -->
 		<xsl:variable name="entry-data-nodeset">
