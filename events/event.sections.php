@@ -87,7 +87,7 @@
 				return $this->buildOutput( $sections_prepare );
 			}
 			$this->sections = $sections_prepare;
-
+			
 
 			/* 2. Check permissions */
 			$sections_permissions = $this->sectionsCheckPermissions( $sections_prepare );
@@ -153,10 +153,6 @@
 				$processed_redirect = $this->sectionsReplaceGetNewValue( $redirect );
 				redirect( $processed_redirect );
 			}
-
-
-			// dump entry ids in param pool for reference
-			$this->dumpEntriesIDsInParamPool( $sections_commit );
 
 
 			return $this->buildOutput( $sections_commit );
@@ -277,6 +273,15 @@
 				$action = SE_Permissions::ACTION_CREATE;
 			}
 
+			// check permissions
+			if( isset($original_fields['__skip-permissions']) ){
+				$perm_check = false;
+			}
+			else{
+				$perm_check = true;
+			}
+			unset($original_fields['__skip-permissions']);
+
 			$fields = $original_fields;
 
 			$res_entry = new XMLElement('entry', null, array('action' => $action));
@@ -322,6 +327,7 @@
 			return array(
 				'action'      => $action,
 				'id'          => $entry_id,
+				'perm_check'  => $perm_check,
 				'entry'       => $entry,
 				'orig_fields' => $original_fields,
 				'fields'      => $fields,
@@ -345,11 +351,18 @@
 		private function sectionsCheckPermissions($input){
 			$output = $input;
 
+			$is_symphony_author = Symphony::Engine()->isLoggedIn();
+
 			foreach($output as $handle => &$section){
 
 				$schema = FieldManager::fetchFieldsSchema( $section['id'] );
 
 				foreach($section['entries'] as &$entry){
+
+					// a logged in Symphony user can skip user permissions check
+					if( $is_symphony_author && !$entry['perm_check'] ){
+						continue;
+					}
 
 					$valid = true;
 
@@ -426,16 +439,31 @@
 				foreach($section['entries'] as &$entry){
 
 					if( $entry['action'] === SE_Permissions::ACTION_DELETE ){
-						$id = $entry['entry']->get( 'id' );
 
-						if( is_numeric( $id ) ){
-							try{
-								EntryManager::delete( $id );
-								$entry['done'] = true;
-							} catch( Exception $e ){
-								$this->error = true;
-								$this->resultEntry( $entry['res_entry'], 'error' );
-							}
+						$entry['done'] = true;
+
+						$done = false;
+
+						/**
+						 * Before deleting an entry.
+						 *
+						 * Extensions can set `$done` variable to true if they delete the entry in their code.
+						 */
+						Symphony::ExtensionManager()->notifyMembers( 'SE_PreDeleteFilter', '*', array(
+							'entry'   => &$entry['entry'],
+							'section' => $handle,
+							'done'    => &$done
+						) );
+
+						if( $done === true ){
+							continue;
+						}
+
+						try{
+							EntryManager::delete( $entry['entry']->get( 'id' ) );
+						} catch( Exception $e ){
+							$this->error = true;
+							$this->resultEntry( $entry['res_entry'], 'error' );
 						}
 					}
 				}
@@ -446,7 +474,7 @@
 
 
 		/**
-		 * Checks field data foreach Entry
+		 * Checks field data foreach Entry.
 		 *
 		 * @param $input
 		 *
@@ -480,6 +508,7 @@
 					$ignore_missing_fields = $entry['action'] === SE_Permissions::ACTION_EDIT;
 
 					foreach($schema as $field_info){
+						$field_id   = $field_info['id'];
 						$field_name = $field_info['element_name'];
 						$has_data   = isset($entry['fields'][$field_name]);
 
@@ -487,20 +516,29 @@
 							continue;
 						}
 
-						$field_id = $field_info['id'];
-						$message  = null;
+						// errors were injected by other events. Don't ask ... just use it ;)
+						if( is_array( $entry['fields'][$field_name] ) && isset($entry['fields'][$field_name]['__error']) ){
+							$error_code = $entry['fields'][$field_name]['__error']['code'];
+							$error_msg  = $entry['fields'][$field_name]['__error']['message'];
 
-						/** @var $field Field */
-						$field = FieldManager::fetch( $field_id );
+							$entry['orig_fields'][$field_name] = $entry['fields'][$field_name]['__value'];
+							$entry['fields'][$field_name]      = $entry['fields'][$field_name]['__value'];
+						}
 
-						$field_data = $has_data ? $entry['fields'][$field_name] : null;
+						// process as normal
+						else{
+							/** @var $field Field */
+							$field = FieldManager::fetch( $field_id );
 
-						$field_status = $field->checkPostFieldData( $field_data, $message, $entry['entry']->get( 'id' ) );
+							$field_data = $has_data ? $entry['fields'][$field_name] : null;
 
-						if( $field_status != Field::__OK__ ){
+							$error_code = $field->checkPostFieldData( $field_data, $error_msg, $entry['entry']->get( 'id' ) );
+						}
+
+						if( $error_code != Field::__OK__ ){
 							$entry_status                 = __ENTRY_FIELD_ERROR__;
-							$errors[$field_id]['code']    = $field_status;
-							$errors[$field_id]['message'] = $message;
+							$errors[$field_id]['code']    = $error_code;
+							$errors[$field_id]['message'] = $error_msg;
 						}
 					}
 
@@ -535,7 +573,7 @@
 				foreach($section['entries'] as &$entry){
 
 					// skip done entries
-					if( $entry['done'] === true ) {
+					if( $entry['done'] === true ){
 						continue;
 					}
 
@@ -588,7 +626,7 @@
 				foreach($section['entries'] as &$entry){
 
 					// skip done entries
-					if( $entry['done'] === true ) {
+					if( $entry['done'] === true ){
 						continue;
 					}
 
@@ -602,6 +640,11 @@
 						/** @var $field Field */
 						$f_id  = FieldManager::fetchFieldIDFromElementName( $f_handle, $section['id'] );
 						$field = FieldManager::fetch( $f_id );
+
+						// skip non-fields
+						if( !$field instanceof Field ){
+							continue;
+						}
 
 						// skip upload fields b/c on new uploads it gives false replacements
 						if( $field instanceof FieldUpload ){
@@ -718,7 +761,7 @@
 				foreach($section['entries'] as &$entry){
 
 					// skip done entries
-					if( $entry['done'] === true ) {
+					if( $entry['done'] === true ){
 						continue;
 					}
 
@@ -943,23 +986,6 @@
 			}
 
 			return $src;
-		}
-
-		/**
-		 * Dumps entries in param pool.
-		 *
-		 * @param $sections
-		 */
-		private function dumpEntriesIDsInParamPool($sections){
-			foreach($sections as $handle => $section){
-
-				foreach($section['entries'] as $entry){
-
-					if( $entry['entry'] instanceof Entry ){
-						Frontend::Page()->_param["event-sections-$handle"][] = $entry['entry']->get( 'id' );
-					}
-				}
-			}
 		}
 
 

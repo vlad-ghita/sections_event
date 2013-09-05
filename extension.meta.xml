@@ -27,6 +27,11 @@
 	</dependencies>
 
 	<releases>
+		<release version="2.3.3" date="2013-09-05" min="2.3"><![CDATA[
+			* Allow creating of custom errors inserted at field check level.
+			* Allow permission check bypass for logged in Symphony authors.
+			* Add support for Multilingual Reflection field.
+		]]></release>
 		<release version="2.3.2" date="2013-07-18" min="2.3"><![CDATA[
 			* XSLT: Various template fixes.
 		]]></release>

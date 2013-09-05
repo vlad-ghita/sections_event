@@ -142,7 +142,7 @@
 
 		public function dInitialiseAdminPageHead(){
 			if( !$this->getValidDependencies() ){
-				$message = __( 'Sections Event depends on Members extension. Make sure it is installed.' );
+				$message = __( 'Sections Event depends on Members and EXSL Function Manager extensions. Make sure they are installed.' );
 				Administration::instance()->Page->pageAlert( $message, Alert::NOTICE );
 			}
 		}
@@ -155,6 +155,9 @@
 		public function dSE_CommitFilter($context){
 			// simulate ETM
 			$this->triggerETM( $context );
+
+			// simulate Multilingual Reflection
+//			$this->triggerMultilingualReflection( $context );
 
 			// simulate Reflection
 			$this->triggerReflection( $context );
@@ -221,6 +224,22 @@
 			$etm->eventFinalSaveFilter( $etm_context );
 
 			$context['filter_results'] = $errors;
+		}
+
+		private function triggerMultilingualReflection($context){
+			$reflection_ext_status = ExtensionManager::fetchStatus( array('handle' => 'multilingual_reflection') );
+			if( $reflection_ext_status[0] !== EXTENSION_ENABLED ){
+				return;
+			}
+
+			/** @var $multilingual_reflection Extension_Multilingual_Reflection */
+			$multilingual_reflection = ExtensionManager::getInstance( 'multilingual_reflection' );
+
+			$multilingual_reflection_context = array(
+				'entry' => $context['entry']
+			);
+
+			$multilingual_reflection->compileFields( $multilingual_reflection_context );
 		}
 
 		private function triggerReflection($context){
