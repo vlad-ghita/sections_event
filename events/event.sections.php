@@ -74,6 +74,12 @@
 				unset($sections_input['__redirect']);
 			}
 
+			$order = array();
+			if( isset($sections_input['__order']) ){
+				$order = array_filter(explode(',', $sections_input['__order']));
+				unset($sections_input['__order']);
+			}
+
 			if( !is_array( $sections_input ) || empty($sections_input) ){
 				return null;
 			}
