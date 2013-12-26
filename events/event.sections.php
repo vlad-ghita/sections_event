@@ -74,10 +74,14 @@
 				unset($sections_input['__redirect']);
 			}
 
-			$order = array();
-			if( isset($sections_input['__order']) ){
-				$order = array_filter(explode(',', $sections_input['__order']));
-				unset($sections_input['__order']);
+			$order = null;
+			if( isset($sections_input['__order']) && is_string($sections_input['__order']) ){
+			    $order = array_filter(explode(',', $sections_input['__order']));
+			    unset($sections_input['__order']);
+			}
+			
+			if( is_array($order) ){
+			    $sections_input = array_merge(array_flip($order), $sections_input);
 			}
 
 			if( !is_array( $sections_input ) || empty($sections_input) ){
