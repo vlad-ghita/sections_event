@@ -684,23 +684,34 @@
 		 *
 		 * @return array|mixed
 		 */
-		private function sectionsReplaceGetNewValue($field_data){
+		private function sectionsReplaceGetNewValue($field_data) {
 
 			// array. treat every value
-			if( is_array( $field_data ) ){
+			if (is_array($field_data)) {
 				$new_value = array();
 
-				foreach($field_data as $k => $v){
-					$new_value[$k] = $this->sectionsReplaceGetNewValue( $v );
+				foreach ($field_data as $k => $v) {
+					$new_value[$k] = $this->sectionsReplaceGetNewValue($v);
 				}
 			}
 
 			// plain value. find variables and replace them
-			else{
+			else {
+				// to avoid performance problems and hidden errors, don't parse strings longer than 200 characters.
+				// http://stackoverflow.com/questions/7620910/regexp-in-preg-match-function-returning-browser-error
+				if (strlen((string) $field_data) > 200) {
+					return $field_data;
+				}
+
 				// this will match all variables like: %...%
 				$regex = '/\\\\.|(%([^%\\\\]|\\\\.)+%)/';
 
-				$new_value = preg_replace_callback( $regex, array($this, 'sectionReplaceProcessValue'), $field_data );
+				$new_value = preg_replace_callback($regex, array($this, 'sectionReplaceProcessValue'), $field_data);
+
+				// an error occurred, stick with original
+				if ($field_data !== null && $new_value === null) {
+					$new_value = $field_data;
+				}
 			}
 
 			return $new_value;
